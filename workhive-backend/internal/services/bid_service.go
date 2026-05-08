@@ -12,8 +12,11 @@ import (
 type BidService interface {
 	SubmitBid(jobID uuid.UUID, freelancerID uuid.UUID, input models.SubmitBidInput) (*models.Bid, error)
 	ListBids(filter models.BidFilter) ([]models.Bid, int64, error)
+	ListJobBids(jobID uuid.UUID, clientID uuid.UUID, filter models.BidFilter) ([]models.Bid, int64, error)
 	UpdateBid(id string, freelancerID uuid.UUID, input models.UpdateBidInput) (*models.Bid, error)
 	WithdrawBid(id string, freelancerID uuid.UUID) error
+	AcceptBid(id string, clientID uuid.UUID) (*models.Bid, error)
+	RejectBid(id string, clientID uuid.UUID) (*models.Bid, error)
 }
 
 type bidService struct {
@@ -65,6 +68,21 @@ func (s *bidService) ListBids(filter models.BidFilter) ([]models.Bid, int64, err
 	return s.bidRepo.List(filter)
 }
 
+func (s *bidService) ListJobBids(jobID uuid.UUID, clientID uuid.UUID, filter models.BidFilter) ([]models.Bid, int64, error) {
+	// check if job exists and belongs to client
+	job, err := s.jobRepo.GetByID(jobID.String())
+	if err != nil {
+		return nil, 0, errors.New("job not found")
+	}
+
+	if job.ClientID != clientID {
+		return nil, 0, errors.New("unauthorized")
+	}
+
+	filter.JobID = jobID.String()
+	return s.bidRepo.List(filter)
+}
+
 func (s *bidService) UpdateBid(id string, freelancerID uuid.UUID, input models.UpdateBidInput) (*models.Bid, error) {
 	bid, err := s.bidRepo.GetByID(id)
 	if err != nil {
@@ -109,4 +127,63 @@ func (s *bidService) WithdrawBid(id string, freelancerID uuid.UUID) error {
 
 	bid.Status = models.BidStatusWithdrawn
 	return s.bidRepo.Update(bid)
+}
+
+func (s *bidService) AcceptBid(id string, clientID uuid.UUID) (*models.Bid, error) {
+	bid, err := s.bidRepo.GetByID(id)
+	if err != nil {
+		return nil, errors.New("bid not found")
+	}
+
+	// check if the job belongs to the client
+	if bid.Job.ClientID != clientID {
+		return nil, errors.New("unauthorized")
+	}
+
+	if bid.Status != models.BidStatusPending {
+		return nil, errors.New("bid is not pending")
+	}
+
+	if bid.Job.Status != models.JobStatusOpen {
+		return nil, errors.New("job is not open")
+	}
+
+	// update bid status
+	bid.Status = models.BidStatusAccepted
+	if err := s.bidRepo.Update(bid); err != nil {
+		return nil, err
+	}
+
+	// update job status
+	bid.Job.Status = models.JobStatusInProgress
+	if err := s.jobRepo.Update(&bid.Job); err != nil {
+		return nil, err
+	}
+
+	// TODO: Create contract 
+
+	return bid, nil
+}
+
+func (s *bidService) RejectBid(id string, clientID uuid.UUID) (*models.Bid, error) {
+	bid, err := s.bidRepo.GetByID(id)
+	if err != nil {
+		return nil, errors.New("bid not found")
+	}
+
+	// check if the job belongs to the client
+	if bid.Job.ClientID != clientID {
+		return nil, errors.New("unauthorized")
+	}
+
+	if bid.Status != models.BidStatusPending {
+		return nil, errors.New("bid is not pending")
+	}
+
+	bid.Status = models.BidStatusRejected
+	if err := s.bidRepo.Update(bid); err != nil {
+		return nil, err
+	}
+
+	return bid, nil
 }

@@ -81,6 +81,40 @@ func (h *BidHandler) ListMyBids(c *gin.Context) {
 	utils.PaginatedOK(c, "Bids fetched successfully", bids, total, filter.Page, filter.Limit)
 }
 
+func (h *BidHandler) ListJobBids(c *gin.Context) {
+	jobIDStr := c.Param("id")
+	jobID, err := uuid.Parse(jobIDStr)
+	if err != nil {
+		utils.BadRequest(c, "Invalid job ID", err.Error())
+		return
+	}
+
+	userID, _ := c.Get("userID")
+	clientID := userID.(uuid.UUID)
+
+	var filter models.BidFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		utils.BadRequest(c, "Invalid query parameters", err.Error())
+		return
+	}
+
+	bids, total, err := h.bidService.ListJobBids(jobID, clientID, filter)
+	if err != nil {
+		if err.Error() == "job not found" {
+			utils.NotFound(c, err.Error())
+			return
+		}
+		if err.Error() == "unauthorized" {
+			utils.Forbidden(c, "You don't have permission to view bids for this job")
+			return
+		}
+		utils.InternalError(c, "Failed to fetch bids")
+		return
+	}
+
+	utils.PaginatedOK(c, "Bids fetched successfully", bids, total, filter.Page, filter.Limit)
+}
+
 func (h *BidHandler) UpdateBid(c *gin.Context) {
 	id := c.Param("id")
 	userID, _ := c.Get("userID")
@@ -133,4 +167,48 @@ func (h *BidHandler) WithdrawBid(c *gin.Context) {
 	}
 
 	utils.OK(c, "Bid withdrawn successfully", nil)
+}
+
+func (h *BidHandler) AcceptBid(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("userID")
+
+	bid, err := h.bidService.AcceptBid(id, userID.(uuid.UUID))
+	if err != nil {
+		switch err.Error() {
+		case "bid not found":
+			utils.NotFound(c, err.Error())
+		case "unauthorized":
+			utils.Forbidden(c, "You don't have permission to accept this bid")
+		case "bid is not pending", "job is not open":
+			utils.BadRequest(c, err.Error(), nil)
+		default:
+			utils.InternalError(c, "Failed to accept bid")
+		}
+		return
+	}
+
+	utils.OK(c, "Bid accepted successfully", bid)
+}
+
+func (h *BidHandler) RejectBid(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("userID")
+
+	bid, err := h.bidService.RejectBid(id, userID.(uuid.UUID))
+	if err != nil {
+		switch err.Error() {
+		case "bid not found":
+			utils.NotFound(c, err.Error())
+		case "unauthorized":
+			utils.Forbidden(c, "You don't have permission to reject this bid")
+		case "bid is not pending":
+			utils.BadRequest(c, err.Error(), nil)
+		default:
+			utils.InternalError(c, "Failed to reject bid")
+		}
+		return
+	}
+
+	utils.OK(c, "Bid rejected successfully", bid)
 }

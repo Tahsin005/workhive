@@ -68,6 +68,9 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				protectedJobs.PUT("/:id", middleware.RoleRequired("client"), jobHandler.UpdateJob)
 				protectedJobs.DELETE("/:id", middleware.RoleRequired("client"), jobHandler.DeleteJob)
 
+				// see bids on own job (client only)
+				protectedJobs.GET("/:id/bids", middleware.RoleRequired("client"), bidHandler.ListJobBids)
+
 				// bid submission route (freelancer only)
 				protectedJobs.POST("/:id/bids", middleware.RoleRequired("freelancer"), bidHandler.SubmitBid)
 			}
@@ -86,6 +89,10 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			// edit/withdraw bid routes (freelancer only)
 			bids.PUT("/:id", middleware.RoleRequired("freelancer"), bidHandler.UpdateBid)
 			bids.PATCH("/:id/withdraw", middleware.RoleRequired("freelancer"), bidHandler.WithdrawBid)
+
+			// accept/reject bid routes (client only)
+			bids.PUT("/:id/accept", middleware.RoleRequired("client"), bidHandler.AcceptBid)
+			bids.PUT("/:id/reject", middleware.RoleRequired("client"), bidHandler.RejectBid)
 		}
 	}
 }
