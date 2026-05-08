@@ -1,5 +1,6 @@
 package models
 
+// auth
 type RegisterInput struct {
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=6"`
@@ -24,4 +25,23 @@ type UpdateProfileInput struct {
 type ChangePasswordInput struct {
 	CurrentPassword string `json:"current_password" validate:"required"`
 	NewPassword     string `json:"new_password" validate:"required,min=6"`
+}
+
+// jobs
+type CreateJobInput struct {
+	Title       string  `json:"title" validate:"required,min=2,max=200"`
+	Description string  `json:"description" validate:"required,min=10"`
+	BudgetMin   float64 `json:"budget_min" validate:"required,gt=0"`
+	BudgetMax   float64 `json:"budget_max" validate:"required,gtefield=BudgetMin"`
+	Category    string  `json:"category" validate:"required,min=2,max=100"`
+}
+
+type JobFilter struct {
+	Search   string  `form:"search"`
+	Category string  `form:"category"`
+	MinPrice float64 `form:"min_price"`
+	MaxPrice float64 `form:"max_price"`
+	Status   string  `form:"status"`
+	Page     int     `form:"page,default=1"`
+	Limit    int     `form:"limit,default=10"`
 }

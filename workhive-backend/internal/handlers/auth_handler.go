@@ -5,13 +5,13 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/gin-gonic/gin"
-	"github.com/go-playground/validator/v10"
-	"github.com/google/uuid"
 	"github.com/Tahsin005/workhive-backend/internal/config"
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/services"
 	"github.com/Tahsin005/workhive-backend/internal/utils"
+	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
+	"github.com/google/uuid"
 )
 
 type AuthHandler struct {
@@ -35,7 +35,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(input); err != nil {
-		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
 		return
 	}
 
@@ -59,7 +59,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(input); err != nil {
-		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
 		return
 	}
 
@@ -101,7 +101,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(input); err != nil {
-		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
 		return
 	}
 
@@ -123,7 +123,7 @@ func (h *AuthHandler) ChangePassword(c *gin.Context) {
 		return
 	}
 	if err := h.validate.Struct(input); err != nil {
-		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
 		return
 	}
 
@@ -218,13 +218,4 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 	}
 
 	utils.OK(c, "Avatar updated successfully", updatedUser)
-}
-
-
-func formatValidationErrors(err error) map[string]string {
-	errs := make(map[string]string)
-	for _, e := range err.(validator.ValidationErrors) {
-		errs[e.Field()] = e.Tag()
-	}
-	return errs
 }

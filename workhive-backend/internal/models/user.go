@@ -17,4 +17,7 @@ type User struct {
 	AvatarURL *string `gorm:"type:varchar(500)" json:"avatar_url"`
 	Bio       *string `gorm:"type:text" json:"bio"`
 	IsActive  bool    `gorm:"default:true" json:"is_active"`
+
+	// associations
+	Jobs []Job `gorm:"foreignKey:ClientID" json:"-"`
 }

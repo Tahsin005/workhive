@@ -13,13 +13,16 @@ import (
 func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// repositories
 	userRepo := repository.NewUserRepository(db)
+	jobRepo := repository.NewJobRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
+	jobService := services.NewJobService(jobRepo, cfg.JWTSecret)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
 	authHandler := handlers.NewAuthHandler(authService, cfg)
+	jobHandler := handlers.NewJobHandler(jobService, cfg)
 
 	r.Static("/uploads", "./uploads")
 
@@ -44,6 +47,21 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				protectedAuth.PUT("/me/avatar", authHandler.UpdateAvatar)
 				protectedAuth.PUT("/me/password", authHandler.ChangePassword)
 				protectedAuth.DELETE("/me", authHandler.DeleteMe)
+			}
+		}
+
+		// job routes
+		jobs := api.Group("/jobs")
+		{
+			// public job routes
+			jobs.GET("", jobHandler.ListJobs)
+			jobs.GET("/:id", jobHandler.GetJob)
+
+			// protected job routes
+			protectedJobs := jobs.Group("/")
+			protectedJobs.Use(middleware.AuthRequired(cfg.JWTSecret))
+			{
+				protectedJobs.POST("", middleware.RoleRequired("client"), jobHandler.CreateJob)
 			}
 		}
 	}

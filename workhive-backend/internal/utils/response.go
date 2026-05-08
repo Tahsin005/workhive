@@ -4,7 +4,18 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/go-playground/validator/v10"
 )
+
+func FormatValidationErrors(err error) map[string]string {
+	errs := make(map[string]string)
+	if ve, ok := err.(validator.ValidationErrors); ok {
+		for _, e := range ve {
+			errs[e.Field()] = e.Tag()
+		}
+	}
+	return errs
+}
 
 type Response struct {
 	Success bool        `json:"success"`
@@ -18,12 +29,38 @@ type ErrorResponse struct {
 	Errors  interface{} `json:"errors,omitempty"`
 }
 
+type Pagination struct {
+	Total int64 `json:"total"`
+	Page  int   `json:"page"`
+	Limit int   `json:"limit"`
+}
+
+type PaginatedResponse struct {
+	Success    bool        `json:"success"`
+	Message    string      `json:"message"`
+	Data       interface{} `json:"data"`
+	Pagination Pagination  `json:"pagination"`
+}
+
 // 2xx
 func OK(c *gin.Context, message string, data interface{}) {
 	c.JSON(http.StatusOK, Response{
 		Success: true,
 		Message: message,
 		Data:    data,
+	})
+}
+
+func PaginatedOK(c *gin.Context, message string, data interface{}, total int64, page, limit int) {
+	c.JSON(http.StatusOK, PaginatedResponse{
+		Success: true,
+		Message: message,
+		Data:    data,
+		Pagination: Pagination{
+			Total: total,
+			Page:  page,
+			Limit: limit,
+		},
 	})
 }
 
