@@ -20,4 +20,5 @@ type User struct {
 
 	// associations
 	Jobs []Job `gorm:"foreignKey:ClientID" json:"-"`
+	Bids []Bid `gorm:"foreignKey:FreelancerID" json:"-"`
 }

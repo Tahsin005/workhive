@@ -14,15 +14,18 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	// repositories
 	userRepo := repository.NewUserRepository(db)
 	jobRepo := repository.NewJobRepository(db)
+	bidRepo := repository.NewBidRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	jobService := services.NewJobService(jobRepo, cfg.JWTSecret)
+	bidService := services.NewBidService(bidRepo, jobRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
 	authHandler := handlers.NewAuthHandler(authService, cfg)
 	jobHandler := handlers.NewJobHandler(jobService, cfg)
+	bidHandler := handlers.NewBidHandler(bidService)
 
 	r.Static("/uploads", "./uploads")
 
@@ -64,10 +67,25 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				protectedJobs.POST("", middleware.RoleRequired("client"), jobHandler.CreateJob)
 				protectedJobs.PUT("/:id", middleware.RoleRequired("client"), jobHandler.UpdateJob)
 				protectedJobs.DELETE("/:id", middleware.RoleRequired("client"), jobHandler.DeleteJob)
+
+				// bid submission route (freelancer only)
+				protectedJobs.POST("/:id/bids", middleware.RoleRequired("freelancer"), bidHandler.SubmitBid)
 			}
 
 			// public single job detail
 			jobs.GET("/:id", jobHandler.GetJob)
+		}
+
+		// bid routes (standalone)
+		bids := api.Group("/bids")
+		bids.Use(middleware.AuthRequired(cfg.JWTSecret))
+		{
+			// my bids (freelancer only)
+			bids.GET("/my", middleware.RoleRequired("freelancer"), bidHandler.ListMyBids)
+
+			// edit/withdraw bid routes (freelancer only)
+			bids.PUT("/:id", middleware.RoleRequired("freelancer"), bidHandler.UpdateBid)
+			bids.PATCH("/:id/withdraw", middleware.RoleRequired("freelancer"), bidHandler.WithdrawBid)
 		}
 	}
 }

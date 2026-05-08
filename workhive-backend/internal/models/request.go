@@ -55,3 +55,22 @@ type JobFilter struct {
 	Page     int     `form:"page,default=1"`
 	Limit    int     `form:"limit,default=10"`
 }
+
+// bids
+type SubmitBidInput struct {
+	Amount      float64 `json:"amount" validate:"required,gt=0"`
+	CoverLetter string  `json:"cover_letter" validate:"required,min=10,max=1000"`
+}
+
+type UpdateBidInput struct {
+	Amount      float64 `json:"amount" validate:"omitempty,gt=0"`
+	CoverLetter string  `json:"cover_letter" validate:"omitempty,min=10,max=1000"`
+}
+
+type BidFilter struct {
+	Status       string `form:"status"`
+	JobID        string `form:"job_id"`
+	FreelancerID string `form:"freelancer_id"`
+	Page         int    `form:"page,default=1"`
+	Limit        int    `form:"limit,default=10"`
+}
