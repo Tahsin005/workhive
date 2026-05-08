@@ -1,0 +1,16 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: workhive_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: workhive
+      POSTGRES_PASSWORD: workhive_secret
+      POSTGRES_DB: workhive
+    ports:
+      - "5432:5432"
+    volumes:
+      - workhive_pgdata:/var/lib/postgresql/data
+
+volumes:
+  workhive_pgdata:
