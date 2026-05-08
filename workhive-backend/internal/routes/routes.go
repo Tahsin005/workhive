@@ -25,19 +25,26 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 	api := r.Group("/api/v1")
 	{
-		// public
+		// health check
 		api.GET("/health", healthHandler.Check)
-		api.POST("/auth/register", authHandler.Register)
-		api.POST("/auth/login", authHandler.Login)
 
-		protected := api.Group("/")
-		protected.Use(middleware.AuthRequired(cfg.JWTSecret))
+		// auth routes
+		auth := api.Group("/auth")
 		{
-			protected.GET("/auth/me", authHandler.Me)
-			protected.PUT("/auth/me", authHandler.UpdateProfile)
-			protected.PUT("/auth/me/avatar", authHandler.UpdateAvatar)
-			protected.PUT("/auth/me/password", authHandler.ChangePassword)
-			protected.DELETE("/auth/me", authHandler.DeleteMe)
+			// public auth routes
+			auth.POST("/register", authHandler.Register)
+			auth.POST("/login", authHandler.Login)
+
+			// protected auth routes
+			protectedAuth := auth.Group("/")
+			protectedAuth.Use(middleware.AuthRequired(cfg.JWTSecret))
+			{
+				protectedAuth.GET("/me", authHandler.Me)
+				protectedAuth.PUT("/me", authHandler.UpdateProfile)
+				protectedAuth.PUT("/me/avatar", authHandler.UpdateAvatar)
+				protectedAuth.PUT("/me/password", authHandler.ChangePassword)
+				protectedAuth.DELETE("/me", authHandler.DeleteMe)
+			}
 		}
 	}
 }

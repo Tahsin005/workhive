@@ -1,7 +1,6 @@
 package models
 
 type RegisterInput struct {
-	FullName string `json:"full_name" validate:"required,min=2,max=100"`
 	Email    string `json:"email" validate:"required,email"`
 	Password string `json:"password" validate:"required,min=6"`
 	Role     Role   `json:"role" validate:"required,oneof=client freelancer"`

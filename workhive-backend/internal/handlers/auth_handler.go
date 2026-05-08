@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -158,7 +157,7 @@ func (h *AuthHandler) DeleteMe(c *gin.Context) {
 func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
-	file, err := c.FormFile("avatar")
+	fileHeader, err := c.FormFile("avatar")
 	if err != nil {
 		utils.BadRequest(c, "No file uploaded", err.Error())
 		return
@@ -166,49 +165,52 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 
 	// validation
 	// check extension
-	ext := strings.ToLower(filepath.Ext(file.Filename))
+	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
 	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
 		utils.BadRequest(c, "Invalid file type", "Only .jpg, .jpeg, and .png are allowed")
 		return
 	}
 
 	// check size (50MB)
-	if file.Size > 50*1024*1024 {
+	if fileHeader.Size > 50*1024*1024 {
 		utils.BadRequest(c, "File too large", "Max size allowed is 50MB")
 		return
 	}
 
-	// get current user to delete old avatar
+	// get current user (useful if we want to delete old local files)
 	user, err := h.authService.GetMe(userID.(uuid.UUID))
 	if err != nil {
 		utils.NotFound(c, "User not found")
 		return
 	}
 
-	// create unique filename
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-	uploadDir := "uploads/avatars"
-	dstPath := filepath.Join(uploadDir, filename)
+	// open file for uploading
+	file, err := fileHeader.Open()
+	if err != nil {
+		utils.InternalError(c, "Failed to open file")
+		return
+	}
+	defer file.Close()
 
-	if err := c.SaveUploadedFile(file, dstPath); err != nil {
-		utils.InternalError(c, "Failed to save file")
+	// upload to cloudinary
+	avatarURL, err := utils.UploadToCloudinary(file, h.cfg.CloudinaryURL)
+	if err != nil {
+		utils.InternalError(c, "Failed to upload to Cloudinary")
 		return
 	}
 
-	// delete old avatar if exists
+	// delete old local avatar if exists (legacy cleanup)
 	if user.AvatarURL != nil && *user.AvatarURL != "" {
-		// extract filename from URL
 		oldURL := *user.AvatarURL
 		prefix := h.cfg.AppURL + "/uploads/avatars/"
 		if strings.HasPrefix(oldURL, prefix) {
 			oldFilename := strings.TrimPrefix(oldURL, prefix)
-			oldPath := filepath.Join(uploadDir, oldFilename)
+			oldPath := filepath.Join("uploads/avatars", oldFilename)
 			_ = os.Remove(oldPath)
 		}
 	}
 
 	// update database
-	avatarURL := fmt.Sprintf("%s/uploads/avatars/%s", h.cfg.AppURL, filename)
 	updatedUser, err := h.authService.UpdateAvatar(userID.(uuid.UUID), avatarURL)
 	if err != nil {
 		utils.InternalError(c, "Failed to update database")

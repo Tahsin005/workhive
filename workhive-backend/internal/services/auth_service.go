@@ -2,6 +2,7 @@ package services
 
 import (
 	"errors"
+	"strings"
 
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/repository"
@@ -46,8 +47,11 @@ func (s *authService) Register(input models.RegisterInput) (*models.AuthResponse
 		return nil, err
 	}
 
+	parts := strings.Split(input.Email, "@")
+	fullName := parts[0]
+
 	user := &models.User{
-		FullName: input.FullName,
+		FullName: fullName,
 		Email:    input.Email,
 		Password: string(hashed),
 		Role:     input.Role,
