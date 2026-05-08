@@ -9,6 +9,8 @@ type JobRepository interface {
 	Create(job *models.Job) error
 	List(filter models.JobFilter) ([]models.Job, int64, error)
 	GetByID(id string) (*models.Job, error)
+	Update(job *models.Job) error
+	Delete(id string) error
 }
 
 type jobRepository struct {
@@ -49,6 +51,9 @@ func (r *jobRepository) List(filter models.JobFilter) ([]models.Job, int64, erro
 	if filter.Status != "" {
 		query = query.Where("status = ?", filter.Status)
 	}
+	if filter.ClientID != "" {
+		query = query.Where("client_id = ?", filter.ClientID)
+	}
 
 	if err := query.Count(&total).Error; err != nil {
 		return nil, 0, err
@@ -64,4 +69,12 @@ func (r *jobRepository) GetByID(id string) (*models.Job, error) {
 	var job models.Job
 	err := r.db.Preload("Client").First(&job, "id = ?", id).Error
 	return &job, err
+}
+
+func (r *jobRepository) Update(job *models.Job) error {
+	return r.db.Save(job).Error
+}
+
+func (r *jobRepository) Delete(id string) error {
+	return r.db.Delete(&models.Job{}, "id = ?", id).Error
 }

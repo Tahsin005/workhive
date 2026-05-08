@@ -55,14 +55,19 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		{
 			// public job routes
 			jobs.GET("", jobHandler.ListJobs)
-			jobs.GET("/:id", jobHandler.GetJob)
 
 			// protected job routes
 			protectedJobs := jobs.Group("/")
 			protectedJobs.Use(middleware.AuthRequired(cfg.JWTSecret))
 			{
+				protectedJobs.GET("/my", middleware.RoleRequired("client"), jobHandler.ListMyJobs)
 				protectedJobs.POST("", middleware.RoleRequired("client"), jobHandler.CreateJob)
+				protectedJobs.PUT("/:id", middleware.RoleRequired("client"), jobHandler.UpdateJob)
+				protectedJobs.DELETE("/:id", middleware.RoleRequired("client"), jobHandler.DeleteJob)
 			}
+
+			// public single job detail
+			jobs.GET("/:id", jobHandler.GetJob)
 		}
 	}
 }

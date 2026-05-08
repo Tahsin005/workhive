@@ -73,3 +73,66 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 
 	utils.OK(c, "Job fetched successfully", job)
 }
+
+func (h *JobHandler) UpdateJob(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("userID")
+
+	var input models.UpdateJobInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.BadRequest(c, "Invalid request body", err.Error())
+		return
+	}
+	if err := h.validate.Struct(input); err != nil {
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
+		return
+	}
+
+	job, err := h.jobService.UpdateJob(id, input, userID.(uuid.UUID))
+	if err != nil {
+		if err.Error() == "unauthorized" {
+			utils.Forbidden(c, "You don't have permission to update this job")
+			return
+		}
+		utils.InternalError(c, "Failed to update job")
+		return
+	}
+
+	utils.OK(c, "Job updated successfully", job)
+}
+
+func (h *JobHandler) DeleteJob(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("userID")
+
+	if err := h.jobService.DeleteJob(id, userID.(uuid.UUID)); err != nil {
+		if err.Error() == "unauthorized" {
+			utils.Forbidden(c, "You don't have permission to delete this job")
+			return
+		}
+		utils.InternalError(c, "Failed to delete job")
+		return
+	}
+
+	utils.OK(c, "Job deleted successfully", nil)
+}
+
+func (h *JobHandler) ListMyJobs(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var filter models.JobFilter
+	if err := c.ShouldBindQuery(&filter); err != nil {
+		utils.BadRequest(c, "Invalid query parameters", err.Error())
+		return
+	}
+
+	filter.ClientID = userID.(uuid.UUID).String()
+
+	jobs, total, err := h.jobService.ListJobs(filter)
+	if err != nil {
+		utils.InternalError(c, "Failed to fetch jobs")
+		return
+	}
+
+	utils.PaginatedOK(c, "Jobs fetched successfully", jobs, total, filter.Page, filter.Limit)
+}

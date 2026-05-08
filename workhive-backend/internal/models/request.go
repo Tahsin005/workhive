@@ -36,12 +36,22 @@ type CreateJobInput struct {
 	Category    string  `json:"category" validate:"required,min=2,max=100"`
 }
 
+type UpdateJobInput struct {
+	Title       string  `json:"title" validate:"omitempty,min=2,max=200"`
+	Description string  `json:"description" validate:"omitempty,min=10"`
+	BudgetMin   float64 `json:"budget_min" validate:"omitempty,gt=0"`
+	BudgetMax   float64 `json:"budget_max" validate:"omitempty,gtefield=BudgetMin"`
+	Category    string  `json:"category" validate:"omitempty,min=2,max=100"`
+	Status      string  `json:"status" validate:"omitempty,oneof=open in_progress completed cancelled"`
+}
+
 type JobFilter struct {
 	Search   string  `form:"search"`
 	Category string  `form:"category"`
 	MinPrice float64 `form:"min_price"`
 	MaxPrice float64 `form:"max_price"`
 	Status   string  `form:"status"`
+	ClientID string  `form:"client_id"`
 	Page     int     `form:"page,default=1"`
 	Limit    int     `form:"limit,default=10"`
 }
