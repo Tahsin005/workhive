@@ -15,11 +15,12 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	userRepo := repository.NewUserRepository(db)
 	jobRepo := repository.NewJobRepository(db)
 	bidRepo := repository.NewBidRepository(db)
+	contractRepo := repository.NewContractRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	jobService := services.NewJobService(jobRepo, cfg.JWTSecret)
-	bidService := services.NewBidService(bidRepo, jobRepo)
+	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)

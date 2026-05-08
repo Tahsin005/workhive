@@ -21,7 +21,7 @@ func ConnectDB(cfg *Config) *gorm.DB {
 		log.Fatalf("Failed to connect to database: %v", err)
 	}
 
-	if err := db.AutoMigrate(&models.User{}, &models.Job{}, &models.Bid{}); err != nil {
+	if err := db.AutoMigrate(&models.User{}, &models.Job{}, &models.Bid{}, &models.Contract{}); err != nil {
 		log.Fatalf("AutoMigrate failed: %v", err)
 	}
 

@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/Tahsin005/workhive-backend/internal/models"
@@ -20,12 +21,13 @@ type BidService interface {
 }
 
 type bidService struct {
-	bidRepo repository.BidRepository
-	jobRepo repository.JobRepository
+	bidRepo      repository.BidRepository
+	jobRepo      repository.JobRepository
+	contractRepo repository.ContractRepository
 }
 
-func NewBidService(bidRepo repository.BidRepository, jobRepo repository.JobRepository) BidService {
-	return &bidService{bidRepo, jobRepo}
+func NewBidService(bidRepo repository.BidRepository, jobRepo repository.JobRepository, contractRepo repository.ContractRepository) BidService {
+	return &bidService{bidRepo, jobRepo, contractRepo}
 }
 
 func (s *bidService) SubmitBid(jobID uuid.UUID, freelancerID uuid.UUID, input models.SubmitBidInput) (*models.Bid, error) {
@@ -160,7 +162,20 @@ func (s *bidService) AcceptBid(id string, clientID uuid.UUID) (*models.Bid, erro
 		return nil, err
 	}
 
-	// TODO: Create contract 
+	// create contract
+	contract := models.Contract{
+		JobID:        bid.JobID,
+		BidID:        bid.ID,
+		ClientID:     clientID,
+		FreelancerID: bid.FreelancerID,
+		Amount:       bid.Amount,
+		Status:       models.ContractStatusActive,
+		StartedAt:    time.Now(),
+	}
+
+	if err := s.contractRepo.Create(&contract); err != nil {
+		return nil, err
+	}
 
 	return bid, nil
 }
