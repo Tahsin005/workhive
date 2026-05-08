@@ -11,27 +11,14 @@ import (
 	"gorm.io/gorm"
 )
 
-type RegisterInput struct {
-	FullName string      `json:"full_name" validate:"required,min=2,max=100"`
-	Email    string      `json:"email" validate:"required,email"`
-	Password string      `json:"password" validate:"required,min=6"`
-	Role     models.Role `json:"role" validate:"required,oneof=client freelancer"`
-}
-
-type LoginInput struct {
-	Email    string `json:"email" validate:"required,email"`
-	Password string `json:"password" validate:"required"`
-}
-
-type AuthResponse struct {
-	Token string      `json:"token"`
-	User  models.User `json:"user"`
-}
-
 type AuthService interface {
-	Register(input RegisterInput) (*AuthResponse, error)
-	Login(input LoginInput) (*AuthResponse, error)
-	GetMe(id uuid.UUID) (*models.User, error)  
+	Register(input models.RegisterInput) (*models.AuthResponse, error)
+	Login(input models.LoginInput) (*models.AuthResponse, error)
+	GetMe(id uuid.UUID) (*models.User, error)
+	UpdateProfile(id uuid.UUID, input models.UpdateProfileInput) (*models.User, error)
+	UpdateAvatar(id uuid.UUID, avatarURL string) (*models.User, error)
+	ChangePassword(id uuid.UUID, input models.ChangePasswordInput) error
+	DeleteMe(id uuid.UUID) error
 }
 
 type authService struct {
@@ -43,7 +30,7 @@ func NewAuthService(userRepo repository.UserRepository, jwtSecret string) AuthSe
 	return &authService{userRepo, jwtSecret}
 }
 
-func (s *authService) Register(input RegisterInput) (*AuthResponse, error) {
+func (s *authService) Register(input models.RegisterInput) (*models.AuthResponse, error) {
 	// check if email already exists
 	existing, err := s.userRepo.FindByEmail(input.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {
@@ -75,10 +62,10 @@ func (s *authService) Register(input RegisterInput) (*AuthResponse, error) {
 		return nil, err
 	}
 
-	return &AuthResponse{Token: token, User: *user}, nil
+	return &models.AuthResponse{Token: token, User: *user}, nil
 }
 
-func (s *authService) Login(input LoginInput) (*AuthResponse, error) {
+func (s *authService) Login(input models.LoginInput) (*models.AuthResponse, error) {
 	user, err := s.userRepo.FindByEmail(input.Email)
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {
@@ -100,9 +87,77 @@ func (s *authService) Login(input LoginInput) (*AuthResponse, error) {
 		return nil, err
 	}
 
-	return &AuthResponse{Token: token, User: *user}, nil
+	return &models.AuthResponse{Token: token, User: *user}, nil
 }
 
 func (s *authService) GetMe(id uuid.UUID) (*models.User, error) {
 	return s.userRepo.FindByID(id)
+}
+
+func (s *authService) UpdateProfile(id uuid.UUID, input models.UpdateProfileInput) (*models.User, error) {
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	if input.FullName != "" {
+		user.FullName = input.FullName
+	}
+	if input.Bio != nil {
+		user.Bio = input.Bio
+	}
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *authService) UpdateAvatar(id uuid.UUID, avatarURL string) (*models.User, error) {
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return nil, err
+	}
+
+	user.AvatarURL = &avatarURL
+
+	if err := s.userRepo.Update(user); err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+
+func (s *authService) ChangePassword(id uuid.UUID, input models.ChangePasswordInput) error {
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(input.CurrentPassword)); err != nil {
+		return errors.New("current password is incorrect")
+	}
+
+	if input.CurrentPassword == input.NewPassword {
+		return errors.New("new password must be different from current password")
+	}
+
+	hashed, err := bcrypt.GenerateFromPassword([]byte(input.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	user.Password = string(hashed)
+	return s.userRepo.Update(user)
+}
+
+func (s *authService) DeleteMe(id uuid.UUID) error {
+	user, err := s.userRepo.FindByID(id)
+	if err != nil {
+		return err
+	}
+
+	return s.userRepo.Delete(user)
 }

@@ -10,6 +10,7 @@ import (
 type Config struct {
 	AppPort     string
 	AppEnv      string
+	AppURL      string
 	DatabaseURL string
 	JWTSecret   string
 }
@@ -22,6 +23,7 @@ func Load() *Config {
 	return &Config{
 		AppPort:     getEnv("APP_PORT", "8080"),
 		AppEnv:      getEnv("APP_ENV", "development"),
+		AppURL:      getEnv("APP_URL", "http://localhost:8080"),
 		DatabaseURL: getEnv("DATABASE_URL", ""),
 		JWTSecret:   getEnv("JWT_SECRET", "secret"),
 	}

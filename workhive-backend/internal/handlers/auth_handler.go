@@ -1,33 +1,40 @@
 package handlers
 
 import (
-	"github.com/Tahsin005/workhive-backend/internal/services"
-	"github.com/Tahsin005/workhive-backend/internal/utils"
+	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
 	"github.com/google/uuid"
+	"github.com/Tahsin005/workhive-backend/internal/config"
+	"github.com/Tahsin005/workhive-backend/internal/models"
+	"github.com/Tahsin005/workhive-backend/internal/services"
+	"github.com/Tahsin005/workhive-backend/internal/utils"
 )
 
 type AuthHandler struct {
 	authService services.AuthService
+	cfg         *config.Config
 	validate    *validator.Validate
 }
 
-func NewAuthHandler(authService services.AuthService) *AuthHandler {
+func NewAuthHandler(authService services.AuthService, cfg *config.Config) *AuthHandler {
 	return &AuthHandler{
 		authService: authService,
+		cfg:         cfg,
 		validate:    validator.New(),
 	}
 }
 
 func (h *AuthHandler) Register(c *gin.Context) {
-	var input services.RegisterInput
-
+	var input models.RegisterInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.BadRequest(c, "Invalid request body", err.Error())
 		return
 	}
-
 	if err := h.validate.Struct(input); err != nil {
 		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
 		return
@@ -47,13 +54,11 @@ func (h *AuthHandler) Register(c *gin.Context) {
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
-	var input services.LoginInput
-
+	var input models.LoginInput
 	if err := c.ShouldBindJSON(&input); err != nil {
 		utils.BadRequest(c, "Invalid request body", err.Error())
 		return
 	}
-
 	if err := h.validate.Struct(input); err != nil {
 		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
 		return
@@ -88,7 +93,132 @@ func (h *AuthHandler) Me(c *gin.Context) {
 	utils.OK(c, "User fetched successfully", user)
 }
 
-// formats validator errors into a readable map
+func (h *AuthHandler) UpdateProfile(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var input models.UpdateProfileInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.BadRequest(c, "Invalid request body", err.Error())
+		return
+	}
+	if err := h.validate.Struct(input); err != nil {
+		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
+		return
+	}
+
+	user, err := h.authService.UpdateProfile(userID.(uuid.UUID), input)
+	if err != nil {
+		utils.InternalError(c, "Failed to update profile")
+		return
+	}
+
+	utils.OK(c, "Profile updated successfully", user)
+}
+
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	var input models.ChangePasswordInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.BadRequest(c, "Invalid request body", err.Error())
+		return
+	}
+	if err := h.validate.Struct(input); err != nil {
+		utils.BadRequest(c, "Validation failed", formatValidationErrors(err))
+		return
+	}
+
+	if err := h.authService.ChangePassword(userID.(uuid.UUID), input); err != nil {
+		if err.Error() == "current password is incorrect" {
+			utils.BadRequest(c, err.Error(), nil)
+			return
+		}
+		if err.Error() == "new password must be different from current password" {
+			utils.BadRequest(c, err.Error(), nil)
+			return
+		}
+		utils.InternalError(c, "Failed to change password")
+		return
+	}
+
+	utils.OK(c, "Password changed successfully", nil)
+}
+
+func (h *AuthHandler) DeleteMe(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	if err := h.authService.DeleteMe(userID.(uuid.UUID)); err != nil {
+		utils.InternalError(c, "Failed to delete account")
+		return
+	}
+
+	utils.OK(c, "Account deleted successfully", nil)
+}
+
+func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	file, err := c.FormFile("avatar")
+	if err != nil {
+		utils.BadRequest(c, "No file uploaded", err.Error())
+		return
+	}
+
+	// validation
+	// check extension
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
+		utils.BadRequest(c, "Invalid file type", "Only .jpg, .jpeg, and .png are allowed")
+		return
+	}
+
+	// check size (50MB)
+	if file.Size > 50*1024*1024 {
+		utils.BadRequest(c, "File too large", "Max size allowed is 50MB")
+		return
+	}
+
+	// get current user to delete old avatar
+	user, err := h.authService.GetMe(userID.(uuid.UUID))
+	if err != nil {
+		utils.NotFound(c, "User not found")
+		return
+	}
+
+	// create unique filename
+	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	uploadDir := "uploads/avatars"
+	dstPath := filepath.Join(uploadDir, filename)
+
+	if err := c.SaveUploadedFile(file, dstPath); err != nil {
+		utils.InternalError(c, "Failed to save file")
+		return
+	}
+
+	// delete old avatar if exists
+	if user.AvatarURL != nil && *user.AvatarURL != "" {
+		// extract filename from URL
+		oldURL := *user.AvatarURL
+		prefix := h.cfg.AppURL + "/uploads/avatars/"
+		if strings.HasPrefix(oldURL, prefix) {
+			oldFilename := strings.TrimPrefix(oldURL, prefix)
+			oldPath := filepath.Join(uploadDir, oldFilename)
+			_ = os.Remove(oldPath)
+		}
+	}
+
+	// update database
+	avatarURL := fmt.Sprintf("%s/uploads/avatars/%s", h.cfg.AppURL, filename)
+	updatedUser, err := h.authService.UpdateAvatar(userID.(uuid.UUID), avatarURL)
+	if err != nil {
+		utils.InternalError(c, "Failed to update database")
+		return
+	}
+
+	utils.OK(c, "Avatar updated successfully", updatedUser)
+}
+
+
 func formatValidationErrors(err error) map[string]string {
 	errs := make(map[string]string)
 	for _, e := range err.(validator.ValidationErrors) {

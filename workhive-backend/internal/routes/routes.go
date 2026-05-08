@@ -19,7 +19,9 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
-	authHandler := handlers.NewAuthHandler(authService)
+	authHandler := handlers.NewAuthHandler(authService, cfg)
+
+	r.Static("/uploads", "./uploads")
 
 	api := r.Group("/api/v1")
 	{
@@ -32,6 +34,10 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		protected.Use(middleware.AuthRequired(cfg.JWTSecret))
 		{
 			protected.GET("/auth/me", authHandler.Me)
+			protected.PUT("/auth/me", authHandler.UpdateProfile)
+			protected.PUT("/auth/me/avatar", authHandler.UpdateAvatar)
+			protected.PUT("/auth/me/password", authHandler.ChangePassword)
+			protected.DELETE("/auth/me", authHandler.DeleteMe)
 		}
 	}
 }
