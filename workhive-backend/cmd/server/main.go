@@ -13,7 +13,7 @@ func main() {
     db := config.ConnectDB(cfg)
 
     r := gin.Default()
-    routes.Setup(r, db)
+    routes.Setup(r, db, cfg)
 
     log.Printf("Server starting on port %s", cfg.AppPort)
     if err := r.Run(":" + cfg.AppPort); err != nil {

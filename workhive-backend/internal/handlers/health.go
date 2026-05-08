@@ -1,42 +1,32 @@
 package handlers
 
 import (
-    "net/http"
-
-    "github.com/gin-gonic/gin"
-    "gorm.io/gorm"
+	"github.com/gin-gonic/gin"
+	"github.com/Tahsin005/workhive-backend/internal/utils"
+	"gorm.io/gorm"
 )
 
 type HealthHandler struct {
-    DB *gorm.DB
+	DB *gorm.DB
 }
 
 func NewHealthHandler(db *gorm.DB) *HealthHandler {
-    return &HealthHandler{DB: db}
+	return &HealthHandler{DB: db}
 }
 
 func (h *HealthHandler) Check(c *gin.Context) {
-    sqlDB, err := h.DB.DB()
-    if err != nil {
-        c.JSON(http.StatusServiceUnavailable, gin.H{
-            "status":   "unhealthy",
-            "database": "unreachable",
-            "error":    err.Error(),
-        })
-        return
-    }
+	sqlDB, err := h.DB.DB()
+	if err != nil {
+		utils.InternalError(c, "Database unreachable")
+		return
+	}
 
-    if err := sqlDB.Ping(); err != nil {
-        c.JSON(http.StatusServiceUnavailable, gin.H{
-            "status":   "unhealthy",
-            "database": "ping failed",
-            "error":    err.Error(),
-        })
-        return
-    }
+	if err := sqlDB.Ping(); err != nil {
+		utils.InternalError(c, "Database ping failed")
+		return
+	}
 
-    c.JSON(http.StatusOK, gin.H{
-        "status":   "healthy",
-        "database": "connected",
-    })
+	utils.OK(c, "Server is healthy", gin.H{
+		"database": "connected",
+	})
 }

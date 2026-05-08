@@ -1,27 +1,30 @@
 package config
 
 import (
-    "fmt"
-    "log"
+	"log"
 
-    "gorm.io/driver/postgres"
-    "gorm.io/gorm"
-    "gorm.io/gorm/logger"
+	"github.com/Tahsin005/workhive-backend/internal/models"
+	"gorm.io/driver/postgres"
+	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func ConnectDB(cfg *Config) *gorm.DB {
-    dsn := fmt.Sprintf(
-        "host=%s port=%s user=%s password=%s dbname=%s sslmode=%s",
-        cfg.DBHost, cfg.DBPort, cfg.DBUser, cfg.DBPass, cfg.DBName, cfg.DBSSLMode,
-    )
+	if cfg.DatabaseURL == "" {
+		log.Fatal("DATABASE_URL is not set")
+	}
 
-    db, err := gorm.Open(postgres.Open(dsn), &gorm.Config{
-        Logger: logger.Default.LogMode(logger.Info),
-    })
-    if err != nil {
-        log.Fatalf("Failed to connect to database: %v", err)
-    }
+	db, err := gorm.Open(postgres.Open(cfg.DatabaseURL), &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Info),
+	})
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
 
-    log.Println("Database connected successfully")
-    return db
+	if err := db.AutoMigrate(&models.User{}); err != nil {
+		log.Fatalf("AutoMigrate failed: %v", err)
+	}
+
+	log.Println("Database connected and migrated successfully")
+	return db
 }
