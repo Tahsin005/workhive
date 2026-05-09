@@ -22,9 +22,10 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	messageRepo := repository.NewMessageRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
 	adminRepo := repository.NewAdminRepository(db)
+	refreshTokenRepo := repository.NewRefreshTokenRepository(db)
 
 	// services
-	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
+	authService := services.NewAuthService(userRepo, refreshTokenRepo, cfg.JWTSecret, cfg.JWTAccessHours, cfg.JWTRefreshDays)
 	jobService := services.NewJobService(jobRepo, bidRepo, contractRepo, cfg.JWTSecret)
 	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
 	contractService := services.NewContractService(contractRepo, jobRepo)
@@ -52,14 +53,14 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 		api.GET("/health", healthHandler.Check)
 
 		// auth routes
-		auth := api.Group("/auth")
+		authRoutes := api.Group("/auth")
 		{
-			// public auth routes
-			auth.POST("/register", authHandler.Register)
-			auth.POST("/login", authHandler.Login)
+			authRoutes.POST("/register", authHandler.Register)
+			authRoutes.POST("/login", authHandler.Login)
+			authRoutes.POST("/refresh", authHandler.Refresh)
+			authRoutes.POST("/logout", authHandler.Logout)
 
-			// protected auth routes
-			protectedAuth := auth.Group("/")
+			protectedAuth := authRoutes.Group("/")
 			protectedAuth.Use(middleware.AuthRequired(cfg.JWTSecret))
 			{
 				protectedAuth.GET("/me", authHandler.Me)

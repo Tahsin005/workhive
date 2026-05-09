@@ -13,8 +13,13 @@ type LoginInput struct {
 }
 
 type AuthResponse struct {
-	Token string `json:"token"`
-	User  User   `json:"user"`
+	Token        string `json:"token"`
+	RefreshToken string `json:"refresh_token"`
+	User         User   `json:"user"`
+}
+
+type RefreshTokenInput struct {
+	RefreshToken string `json:"refresh_token" validate:"required"`
 }
 
 type UpdateProfileInput struct {

@@ -155,6 +155,48 @@ func (h *AuthHandler) DeleteMe(c *gin.Context) {
 	utils.OK(c, "Account deleted successfully", nil)
 }
 
+func (h *AuthHandler) Refresh(c *gin.Context) {
+	var input models.RefreshTokenInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.BadRequest(c, "Invalid request body", err.Error())
+		return
+	}
+
+	if err := h.validate.Struct(input); err != nil {
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
+		return
+	}
+
+	response, err := h.authService.Refresh(input.RefreshToken)
+	if err != nil {
+		utils.Unauthorized(c, err.Error())
+		return
+	}
+
+	utils.OK(c, "Token refreshed successfully", response)
+}
+
+func (h *AuthHandler) Logout(c *gin.Context) {
+	var input models.RefreshTokenInput
+	if err := c.ShouldBindJSON(&input); err != nil {
+		utils.BadRequest(c, "Invalid request body", err.Error())
+		return
+	}
+
+	if err := h.validate.Struct(input); err != nil {
+		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
+		return
+	}
+
+	if err := h.authService.Logout(input.RefreshToken); err != nil {
+		// even if error, return OK for logout to not block user flow
+		utils.OK(c, "Logged out successfully", nil)
+		return
+	}
+
+	utils.OK(c, "Logged out successfully", nil)
+}
+
 func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 	userID, _ := c.Get("userID")
 

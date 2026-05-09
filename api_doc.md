@@ -93,6 +93,50 @@ Paginated endpoints include pagination metadata in the root response:
 
 ---
 
+### `POST /api/v1/auth/refresh`
+**Description:** Refreshes an expired access token using a valid refresh token.
+
+**Request:**
+- **Headers:** `Content-Type: application/json`
+- **Body:**
+  ```json
+  {
+    "refresh_token": "opaque_refresh_token_string"
+  }
+  ```
+
+**Responses:**
+- `200 OK`: Returns a new access token and a new refresh token (Token Rotation).
+- `400 Bad Request`: Validation failure.
+- `401 Unauthorized`: Refresh token is invalid or expired.
+
+**Edge Cases:**
+- Upon success, the old refresh token is immediately deleted and replaced with a newly generated one (rolling session).
+- Access tokens expire in 1 hour; Refresh tokens expire in 7 days.
+
+---
+
+### `POST /api/v1/auth/logout`
+**Description:** Logs out a user by invalidating their refresh token.
+
+**Request:**
+- **Headers:** `Content-Type: application/json`
+- **Body:**
+  ```json
+  {
+    "refresh_token": "opaque_refresh_token_string"
+  }
+  ```
+
+**Responses:**
+- `200 OK`: Successfully logged out.
+
+**Edge Cases:**
+- The provided refresh token is immediately deleted from the database.
+- Any active short-lived access tokens remain valid until they naturally expire (stateless JWT limitation).
+
+---
+
 ### `PUT /api/v1/auth/me`
 **Description:** Updates the authenticated user's profile (name, bio).
 

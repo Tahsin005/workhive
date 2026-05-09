@@ -3,6 +3,7 @@ package services
 import (
 	"errors"
 	"strings"
+	"time"
 
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/repository"
@@ -20,15 +21,20 @@ type AuthService interface {
 	UpdateAvatar(id uuid.UUID, avatarURL string) (*models.User, error)
 	ChangePassword(id uuid.UUID, input models.ChangePasswordInput) error
 	DeleteMe(id uuid.UUID) error
+	Refresh(refreshToken string) (*models.AuthResponse, error)
+	Logout(refreshToken string) error
 }
 
 type authService struct {
-	userRepo  repository.UserRepository
-	jwtSecret string
+	userRepo         repository.UserRepository
+	refreshTokenRepo repository.RefreshTokenRepository
+	jwtSecret        string
+	jwtAccessHours   int
+	jwtRefreshDays   int
 }
 
-func NewAuthService(userRepo repository.UserRepository, jwtSecret string) AuthService {
-	return &authService{userRepo, jwtSecret}
+func NewAuthService(userRepo repository.UserRepository, refreshTokenRepo repository.RefreshTokenRepository, jwtSecret string, jwtAccessHours int, jwtRefreshDays int) AuthService {
+	return &authService{userRepo, refreshTokenRepo, jwtSecret, jwtAccessHours, jwtRefreshDays}
 }
 
 func (s *authService) Register(input models.RegisterInput) (*models.AuthResponse, error) {
@@ -64,12 +70,26 @@ func (s *authService) Register(input models.RegisterInput) (*models.AuthResponse
 		return nil, err
 	}
 
-	token, err := utils.GenerateToken(user.ID, string(user.Role), s.jwtSecret)
+	token, err := utils.GenerateToken(user.ID, string(user.Role), s.jwtSecret, time.Duration(s.jwtAccessHours)*time.Hour)
 	if err != nil {
 		return nil, err
 	}
 
-	return &models.AuthResponse{Token: token, User: *user}, nil
+	refreshTokenString, err := utils.GenerateOpaqueToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := models.RefreshToken{
+		UserID:    user.ID,
+		Token:     refreshTokenString,
+		ExpiresAt: time.Now().Add(time.Duration(s.jwtRefreshDays) * 24 * time.Hour),
+	}
+	if err := s.refreshTokenRepo.Create(&refreshToken); err != nil {
+		return nil, err
+	}
+
+	return &models.AuthResponse{Token: token, RefreshToken: refreshTokenString, User: *user}, nil
 }
 
 func (s *authService) Login(input models.LoginInput) (*models.AuthResponse, error) {
@@ -89,12 +109,26 @@ func (s *authService) Login(input models.LoginInput) (*models.AuthResponse, erro
 		return nil, errors.New("invalid credentials")
 	}
 
-	token, err := utils.GenerateToken(user.ID, string(user.Role), s.jwtSecret)
+	token, err := utils.GenerateToken(user.ID, string(user.Role), s.jwtSecret, time.Duration(s.jwtAccessHours)*time.Hour)
 	if err != nil {
 		return nil, err
 	}
 
-	return &models.AuthResponse{Token: token, User: *user}, nil
+	refreshTokenString, err := utils.GenerateOpaqueToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	refreshToken := models.RefreshToken{
+		UserID:    user.ID,
+		Token:     refreshTokenString,
+		ExpiresAt: time.Now().Add(time.Duration(s.jwtRefreshDays) * 24 * time.Hour),
+	}
+	if err := s.refreshTokenRepo.Create(&refreshToken); err != nil {
+		return nil, err
+	}
+
+	return &models.AuthResponse{Token: token, RefreshToken: refreshTokenString, User: *user}, nil
 }
 
 func (s *authService) GetMe(id uuid.UUID) (*models.User, error) {
@@ -167,4 +201,59 @@ func (s *authService) DeleteMe(id uuid.UUID) error {
 	}
 
 	return s.userRepo.Delete(user)
+}
+
+func (s *authService) Refresh(refreshTokenStr string) (*models.AuthResponse, error) {
+	// Find the old refresh token
+	oldToken, err := s.refreshTokenRepo.FindByToken(refreshTokenStr)
+	if err != nil {
+		return nil, errors.New("invalid refresh token")
+	}
+
+	// Check if expired
+	if time.Now().After(oldToken.ExpiresAt) {
+		_ = s.refreshTokenRepo.DeleteByToken(refreshTokenStr)
+		return nil, errors.New("refresh token expired")
+	}
+
+	// Get user to generate new token
+	user, err := s.userRepo.FindByID(oldToken.UserID)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate new access token
+	newAccessToken, err := utils.GenerateToken(user.ID, string(user.Role), s.jwtSecret, time.Duration(s.jwtAccessHours)*time.Hour)
+	if err != nil {
+		return nil, err
+	}
+
+	// Generate new refresh token
+	newRefreshTokenStr, err := utils.GenerateOpaqueToken(32)
+	if err != nil {
+		return nil, err
+	}
+
+	newRefreshToken := models.RefreshToken{
+		UserID:    user.ID,
+		Token:     newRefreshTokenStr,
+		ExpiresAt: time.Now().Add(time.Duration(s.jwtRefreshDays) * 24 * time.Hour),
+	}
+
+	// Token rotation: Save new token, delete old token
+	if err := s.refreshTokenRepo.Create(&newRefreshToken); err != nil {
+		return nil, err
+	}
+	_ = s.refreshTokenRepo.DeleteByToken(refreshTokenStr)
+
+	return &models.AuthResponse{
+		Token:        newAccessToken,
+		RefreshToken: newRefreshTokenStr,
+		User:         *user,
+	}, nil
+}
+
+func (s *authService) Logout(refreshTokenStr string) error {
+	// Delete the refresh token to invalidate the session
+	return s.refreshTokenRepo.DeleteByToken(refreshTokenStr)
 }
