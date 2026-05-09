@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Background rounded square -->
+  <rect width="64" height="64" rx="14" fill="#fdc600" />
+
+  <!-- Hexagon outline (Lucide style) -->
+  <path
+    d="M21 10h22l11 19-11 19H21L10 29z"
+    fill="none"
+    stroke="#724013"
+    stroke-width="4"
+    stroke-linejoin="round"
+  />
+</svg>
