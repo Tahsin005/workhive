@@ -21,6 +21,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	paymentRepo := repository.NewPaymentRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
 	reviewRepo := repository.NewReviewRepository(db)
+	adminRepo := repository.NewAdminRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
@@ -30,6 +31,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg)
 	messageService := services.NewMessageService(messageRepo, contractRepo)
 	reviewService := services.NewReviewService(reviewRepo, contractRepo, userRepo)
+	adminService := services.NewAdminService(adminRepo, userRepo, jobRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -40,6 +42,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	paymentHandler := handlers.NewPaymentHandler(paymentService)
 	messageHandler := handlers.NewMessageHandler(messageService, hub, cfg.JWTSecret)
 	reviewHandler := handlers.NewReviewHandler(reviewService, validator.New())
+	adminHandler := handlers.NewAdminHandler(adminService, validator.New(), cfg.AdminSecret)
 
 	r.Static("/uploads", "./uploads")
 
@@ -178,5 +181,22 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 				protectedReviews.POST("/contract/:id", reviewHandler.SubmitReview)
 			}
 		}
+
+		// admin routes
+		admin := api.Group("/admin")
+		admin.Use(middleware.AuthRequired(cfg.JWTSecret))
+		admin.Use(middleware.RoleRequired("admin"))
+		{
+			admin.GET("/users", adminHandler.ListUsers)
+			admin.GET("/users/:id", adminHandler.GetUser)
+			admin.PUT("/users/:id/ban", adminHandler.BanUser)
+			admin.DELETE("/users/:id", adminHandler.DeleteUser)
+			admin.GET("/jobs", adminHandler.ListJobs)
+			admin.DELETE("/jobs/:id", adminHandler.DeleteJob)
+			admin.GET("/stats", adminHandler.GetStats)
+		}
+
+		// public promotion route — secret word acts as the auth mechanism
+		api.POST("/promote/:email/:secret", adminHandler.PromoteToAdmin)
 	}
 }

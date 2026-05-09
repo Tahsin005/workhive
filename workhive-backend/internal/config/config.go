@@ -17,6 +17,7 @@ type Config struct {
 	JWTSecret           string
 	StripeSecret        string
 	StripeWebhookSecret string
+	AdminSecret         string
 }
 
 func Load() *Config {
@@ -33,6 +34,7 @@ func Load() *Config {
 		JWTSecret:           getEnv("JWT_SECRET", "secret"),
 		StripeSecret:        strings.TrimSpace(getEnv("STRIPE_SECRET_KEY", "")),
 		StripeWebhookSecret: strings.TrimSpace(getEnv("STRIPE_WEBHOOK_SECRET", "")),
+		AdminSecret:         getEnv("ADMIN_SECRET", ""),
 	}
 }
 

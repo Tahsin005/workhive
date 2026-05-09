@@ -12,6 +12,7 @@ type UserRepository interface {
 	FindByID(id uuid.UUID) (*models.User, error)
 	Update(user *models.User) error
 	Delete(user *models.User) error
+	UpdateRole(email string, role models.Role) error
 }
 
 type userRepository struct {
@@ -48,4 +49,10 @@ func (r *userRepository) Update(user *models.User) error {
 
 func (r *userRepository) Delete(user *models.User) error {
 	return r.db.Delete(user).Error
+}
+
+func (r *userRepository) UpdateRole(email string, role models.Role) error {
+	return r.db.Model(&models.User{}).
+		Where("email = ? AND deleted_at IS NULL", email).
+		Update("role", role).Error
 }
