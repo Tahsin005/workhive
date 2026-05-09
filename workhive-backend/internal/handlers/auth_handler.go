@@ -167,14 +167,14 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 	// validation
 	// check extension
 	ext := strings.ToLower(filepath.Ext(fileHeader.Filename))
-	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" {
-		utils.BadRequest(c, "Invalid file type", "Only .jpg, .jpeg, and .png are allowed")
+	if ext != ".jpg" && ext != ".jpeg" && ext != ".png" && ext != ".webp" {
+		utils.BadRequest(c, "Invalid file type", "Only .jpg, .jpeg, .png, and .webp are allowed")
 		return
 	}
 
-	// check size (50MB)
-	if fileHeader.Size > 50*1024*1024 {
-		utils.BadRequest(c, "File too large", "Max size allowed is 50MB")
+	// check size (2MB)
+	if fileHeader.Size > 2*1024*1024 {
+		utils.BadRequest(c, "File too large", "Max size allowed is 2MB")
 		return
 	}
 

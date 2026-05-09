@@ -18,12 +18,14 @@ type JobService interface {
 }
 
 type jobService struct {
-	jobRepo   repository.JobRepository
-	jwtSecret string
+	jobRepo      repository.JobRepository
+	bidRepo      repository.BidRepository
+	contractRepo repository.ContractRepository
+	jwtSecret    string
 }
 
-func NewJobService(jobRepo repository.JobRepository, jwtSecret string) JobService {
-	return &jobService{jobRepo, jwtSecret}
+func NewJobService(jobRepo repository.JobRepository, bidRepo repository.BidRepository, contractRepo repository.ContractRepository, jwtSecret string) JobService {
+	return &jobService{jobRepo, bidRepo, contractRepo, jwtSecret}
 }
 
 func (s *jobService) CreateJob(input models.CreateJobInput, clientID uuid.UUID) (*models.Job, error) {
@@ -55,11 +57,16 @@ func (s *jobService) GetJobByID(id string) (*models.Job, error) {
 func (s *jobService) UpdateJob(id string, input models.UpdateJobInput, clientID uuid.UUID) (*models.Job, error) {
 	job, err := s.jobRepo.GetByID(id)
 	if err != nil {
-		return nil, err
+		return nil, errors.New("job not found")
 	}
 
 	if job.ClientID != clientID {
 		return nil, errors.New("unauthorized")
+	}
+
+	// cannot edit a job that is not open
+	if job.Status != models.JobStatusOpen {
+		return nil, errors.New("job is not open for editing")
 	}
 
 	if input.Title != "" {
@@ -77,9 +84,7 @@ func (s *jobService) UpdateJob(id string, input models.UpdateJobInput, clientID 
 	if input.Category != "" {
 		job.Category = input.Category
 	}
-	if input.Status != "" {
-		job.Status = models.JobStatus(input.Status)
-	}
+	// NOTE: Status is intentionally NOT updated here — clients cannot change job status directly
 
 	if err := s.jobRepo.Update(job); err != nil {
 		return nil, err
@@ -91,11 +96,29 @@ func (s *jobService) UpdateJob(id string, input models.UpdateJobInput, clientID 
 func (s *jobService) DeleteJob(id string, clientID uuid.UUID) error {
 	job, err := s.jobRepo.GetByID(id)
 	if err != nil {
-		return err
+		return errors.New("job not found")
 	}
 
 	if job.ClientID != clientID {
 		return errors.New("unauthorized")
+	}
+
+	// block deletion if any bid is accepted (contract likely exists)
+	hasAccepted, err := s.bidRepo.HasAcceptedBid(id)
+	if err != nil {
+		return err
+	}
+	if hasAccepted {
+		return errors.New("cannot delete a job with an accepted bid or active contract")
+	}
+
+	// double-check the contract table directly
+	hasContract, err := s.contractRepo.HasActiveContractForJob(id)
+	if err != nil {
+		return err
+	}
+	if hasContract {
+		return errors.New("cannot delete a job with an accepted bid or active contract")
 	}
 
 	return s.jobRepo.Delete(id)

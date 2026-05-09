@@ -11,6 +11,9 @@ type BidRepository interface {
 	GetByID(id string) (*models.Bid, error)
 	Update(bid *models.Bid) error
 	Delete(id string) error
+	RejectOtherBids(jobID string, acceptedBidID string) error
+	HasAcceptedBid(jobID string) (bool, error)
+	HasActiveBid(jobID string, freelancerID string) (bool, error)
 }
 
 type bidRepository struct {
@@ -66,4 +69,25 @@ func (r *bidRepository) Update(bid *models.Bid) error {
 
 func (r *bidRepository) Delete(id string) error {
 	return r.db.Delete(&models.Bid{}, "id = ?", id).Error
+}
+
+// RejectOtherBids sets all non-accepted bids for a job to 'rejected', used atomically when accepting one bid.
+func (r *bidRepository) RejectOtherBids(jobID string, acceptedBidID string) error {
+	return r.db.Model(&models.Bid{}).
+		Where("job_id = ? AND id != ? AND status = ?", jobID, acceptedBidID, models.BidStatusPending).
+		Update("status", models.BidStatusRejected).Error
+}
+
+// HasAcceptedBid returns true if a job has any bid in accepted status.
+func (r *bidRepository) HasAcceptedBid(jobID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Bid{}).Where("job_id = ? AND status = ?", jobID, models.BidStatusAccepted).Count(&count).Error
+	return count > 0, err
+}
+
+// HasActiveBid returns true if a freelancer has a pending or accepted bid for a job.
+func (r *bidRepository) HasActiveBid(jobID string, freelancerID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Bid{}).Where("job_id = ? AND freelancer_id = ? AND status IN ?", jobID, freelancerID, []models.BidStatus{models.BidStatusPending, models.BidStatusAccepted}).Count(&count).Error
+	return count > 0, err
 }

@@ -32,6 +32,9 @@ func NewAuthService(userRepo repository.UserRepository, jwtSecret string) AuthSe
 }
 
 func (s *authService) Register(input models.RegisterInput) (*models.AuthResponse, error) {
+	// normalize email to lowercase
+	input.Email = strings.ToLower(strings.TrimSpace(input.Email))
+
 	// check if email already exists
 	existing, err := s.userRepo.FindByEmail(input.Email)
 	if err != nil && !errors.Is(err, gorm.ErrRecordNotFound) {

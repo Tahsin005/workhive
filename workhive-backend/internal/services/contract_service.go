@@ -57,6 +57,15 @@ func (s *contractService) CompleteContract(id string, clientID uuid.UUID) (*mode
 		return nil, errors.New("contract is not active")
 	}
 
+	// payment must exist and be paid before completion
+	hasPaid, err := s.contractRepo.HasPaidPayment(id)
+	if err != nil {
+		return nil, err
+	}
+	if !hasPaid {
+		return nil, errors.New("cannot complete contract before payment is made")
+	}
+
 	now := time.Now()
 	contract.Status = models.ContractStatusCompleted
 	contract.CompletedAt = &now
@@ -88,17 +97,29 @@ func (s *contractService) CancelContract(id string, userID uuid.UUID) (*models.C
 		return nil, errors.New("contract is not active")
 	}
 
+	// cannot cancel if payment was already made
+	hasPaid, err := s.contractRepo.HasPaidPayment(id)
+	if err != nil {
+		return nil, err
+	}
+	if hasPaid {
+		return nil, errors.New("cannot cancel a contract that has already been paid")
+	}
+
 	contract.Status = models.ContractStatusCancelled
 
 	if err := s.contractRepo.Update(contract); err != nil {
 		return nil, err
 	}
 
-	// Update job status
-	contract.Job.Status = models.JobStatusCancelled
+	// Job returns to open so client can accept another bid
+	contract.Job.Status = models.JobStatusOpen
 	if err := s.jobRepo.Update(&contract.Job); err != nil {
 		return nil, err
 	}
+
+	// Restore all rejected bids for this job back to pending (optional good UX)
+	_ = s.contractRepo.RestoreRejectedBids(contract.JobID.String())
 
 	return contract, nil
 }

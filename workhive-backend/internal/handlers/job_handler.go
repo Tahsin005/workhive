@@ -54,6 +54,20 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 		return
 	}
 
+	// validate budget range
+	if filter.MinPrice > 0 && filter.MaxPrice > 0 && filter.MinPrice > filter.MaxPrice {
+		utils.BadRequest(c, "budget_min cannot be greater than budget_max", nil)
+		return
+	}
+
+	// public listing only shows open jobs
+	filter.Status = "open"
+
+	// cap limit at 50
+	if filter.Limit > 50 {
+		filter.Limit = 50
+	}
+
 	jobs, total, err := h.jobService.ListJobs(filter)
 	if err != nil {
 		utils.InternalError(c, "Failed to fetch jobs")
@@ -91,11 +105,16 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 
 	job, err := h.jobService.UpdateJob(id, input, userID.(uuid.UUID))
 	if err != nil {
-		if err.Error() == "unauthorized" {
+		switch err.Error() {
+		case "job not found":
+			utils.NotFound(c, "Job not found")
+		case "unauthorized":
 			utils.Forbidden(c, "You don't have permission to update this job")
-			return
+		case "job is not open for editing":
+			utils.BadRequest(c, "Only open jobs can be edited", nil)
+		default:
+			utils.InternalError(c, "Failed to update job")
 		}
-		utils.InternalError(c, "Failed to update job")
 		return
 	}
 
@@ -107,11 +126,16 @@ func (h *JobHandler) DeleteJob(c *gin.Context) {
 	userID, _ := c.Get("userID")
 
 	if err := h.jobService.DeleteJob(id, userID.(uuid.UUID)); err != nil {
-		if err.Error() == "unauthorized" {
+		switch err.Error() {
+		case "job not found":
+			utils.NotFound(c, "Job not found")
+		case "unauthorized":
 			utils.Forbidden(c, "You don't have permission to delete this job")
-			return
+		case "cannot delete a job with an accepted bid or active contract":
+			utils.BadRequest(c, err.Error(), nil)
+		default:
+			utils.InternalError(c, "Failed to delete job")
 		}
-		utils.InternalError(c, "Failed to delete job")
 		return
 	}
 

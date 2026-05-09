@@ -2,7 +2,6 @@ package services
 
 import (
 	"errors"
-	"strings"
 	"time"
 
 	"github.com/Tahsin005/workhive-backend/internal/models"
@@ -46,6 +45,15 @@ func (s *bidService) SubmitBid(jobID uuid.UUID, freelancerID uuid.UUID, input mo
 		return nil, errors.New("you cannot bid on your own job")
 	}
 
+	// check if freelancer already has an active (pending/accepted) bid
+	hasActive, err := s.bidRepo.HasActiveBid(jobID.String(), freelancerID.String())
+	if err != nil {
+		return nil, err
+	}
+	if hasActive {
+		return nil, errors.New("you have already bid on this job")
+	}
+
 	bid := models.Bid{
 		JobID:        jobID,
 		FreelancerID: freelancerID,
@@ -55,11 +63,6 @@ func (s *bidService) SubmitBid(jobID uuid.UUID, freelancerID uuid.UUID, input mo
 	}
 
 	if err := s.bidRepo.Create(&bid); err != nil {
-		// Check for unique constraint violation (duplicate bid)
-		// Postgres error code for unique_violation is 23505
-		if strings.Contains(err.Error(), "23505") || strings.Contains(err.Error(), "unique constraint") {
-			return nil, errors.New("you have already bid on this job")
-		}
 		return nil, err
 	}
 
@@ -150,9 +153,14 @@ func (s *bidService) AcceptBid(id string, clientID uuid.UUID) (*models.Bid, erro
 		return nil, errors.New("job is not open")
 	}
 
-	// update bid status
+	// accept this bid
 	bid.Status = models.BidStatusAccepted
 	if err := s.bidRepo.Update(bid); err != nil {
+		return nil, err
+	}
+
+	// auto-reject all other pending bids on the same job
+	if err := s.bidRepo.RejectOtherBids(bid.JobID.String(), bid.ID.String()); err != nil {
 		return nil, err
 	}
 
@@ -179,6 +187,7 @@ func (s *bidService) AcceptBid(id string, clientID uuid.UUID) (*models.Bid, erro
 
 	return bid, nil
 }
+
 
 func (s *bidService) RejectBid(id string, clientID uuid.UUID) (*models.Bid, error) {
 	bid, err := s.bidRepo.GetByID(id)

@@ -10,6 +10,9 @@ type ContractRepository interface {
 	GetByID(id string) (*models.Contract, error)
 	List(filter models.ContractFilter) ([]models.Contract, int64, error)
 	Update(contract *models.Contract) error
+	HasActiveContractForJob(jobID string) (bool, error)
+	HasPaidPayment(contractID string) (bool, error)
+	RestoreRejectedBids(jobID string) error
 }
 
 type contractRepository struct {
@@ -61,4 +64,24 @@ func (r *contractRepository) List(filter models.ContractFilter) ([]models.Contra
 
 func (r *contractRepository) Update(contract *models.Contract) error {
 	return r.db.Save(contract).Error
+}
+
+// HasActiveContractForJob returns true if the job has an active contract.
+func (r *contractRepository) HasActiveContractForJob(jobID string) (bool, error) {
+	var count int64
+	err := r.db.Model(&models.Contract{}).Where("job_id = ? AND status = ?", jobID, models.ContractStatusActive).Count(&count).Error
+	return count > 0, err
+}
+
+// HasPaidPayment checks if any paid payment exists for a contract.
+func (r *contractRepository) HasPaidPayment(contractID string) (bool, error) {
+	var count int64
+	err := r.db.Table("payments").Where("contract_id = ? AND status = 'paid' AND deleted_at IS NULL", contractID).Count(&count).Error
+	return count > 0, err
+}
+
+// RestoreRejectedBids sets all rejected bids for a job back to pending (used when cancelling a contract).
+func (r *contractRepository) RestoreRejectedBids(jobID string) error {
+	return r.db.Model(&models.Bid{}).Where("job_id = ? AND status = ?", jobID, models.BidStatusRejected).
+		Update("status", models.BidStatusPending).Error
 }

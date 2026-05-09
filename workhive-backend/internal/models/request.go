@@ -42,7 +42,6 @@ type UpdateJobInput struct {
 	BudgetMin   float64 `json:"budget_min" validate:"omitempty,gt=0"`
 	BudgetMax   float64 `json:"budget_max" validate:"omitempty,gtefield=BudgetMin"`
 	Category    string  `json:"category" validate:"omitempty,min=2,max=100"`
-	Status      string  `json:"status" validate:"omitempty,oneof=open in_progress completed cancelled"`
 }
 
 type JobFilter struct {

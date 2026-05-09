@@ -25,7 +25,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
-	jobService := services.NewJobService(jobRepo, cfg.JWTSecret)
+	jobService := services.NewJobService(jobRepo, bidRepo, contractRepo, cfg.JWTSecret)
 	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
 	contractService := services.NewContractService(contractRepo, jobRepo)
 	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg)

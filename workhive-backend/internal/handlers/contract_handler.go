@@ -75,7 +75,7 @@ func (h *ContractHandler) CompleteContract(c *gin.Context) {
 			utils.NotFound(c, err.Error())
 		case "unauthorized":
 			utils.Forbidden(c, "You don't have permission to complete this contract")
-		case "contract is not active":
+		case "contract is not active", "cannot complete contract before payment is made":
 			utils.BadRequest(c, err.Error(), nil)
 		default:
 			utils.InternalError(c, "Failed to complete contract")
@@ -97,7 +97,7 @@ func (h *ContractHandler) CancelContract(c *gin.Context) {
 			utils.NotFound(c, err.Error())
 		case "unauthorized":
 			utils.Forbidden(c, "You don't have permission to cancel this contract")
-		case "contract is not active":
+		case "contract is not active", "cannot cancel a contract that has already been paid":
 			utils.BadRequest(c, err.Error(), nil)
 		default:
 			utils.InternalError(c, "Failed to cancel contract")
