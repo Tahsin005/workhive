@@ -7,16 +7,18 @@ import (
 	"github.com/Tahsin005/workhive-backend/internal/middleware"
 	"github.com/Tahsin005/workhive-backend/internal/repository"
 	"github.com/Tahsin005/workhive-backend/internal/services"
+	ws "github.com/Tahsin005/workhive-backend/internal/websocket"
 	"gorm.io/gorm"
 )
 
-func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
+func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	// repositories
 	userRepo := repository.NewUserRepository(db)
 	jobRepo := repository.NewJobRepository(db)
 	bidRepo := repository.NewBidRepository(db)
 	contractRepo := repository.NewContractRepository(db)
 	paymentRepo := repository.NewPaymentRepository(db)
+	messageRepo := repository.NewMessageRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
@@ -24,6 +26,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
 	contractService := services.NewContractService(contractRepo, jobRepo)
 	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg)
+	messageService := services.NewMessageService(messageRepo, contractRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -32,6 +35,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	bidHandler := handlers.NewBidHandler(bidService)
 	contractHandler := handlers.NewContractHandler(contractService)
 	paymentHandler := handlers.NewPaymentHandler(paymentService)
+	messageHandler := handlers.NewMessageHandler(messageService, hub, cfg.JWTSecret)
 
 	r.Static("/uploads", "./uploads")
 
@@ -125,8 +129,6 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 		// payment routes
 		payments := api.Group("/payments")
 		{
-
-
 			// public webhook
 			payments.POST("/webhook", paymentHandler.HandleWebhook)
 
@@ -145,5 +147,17 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 				}
 			}
 		}
+
+		// message routes — protected
+		protectedMsg := api.Group("/")
+		protectedMsg.Use(middleware.AuthRequired(cfg.JWTSecret))
+		{
+			protectedMsg.GET("/messages/:contractId", messageHandler.GetHistory)
+			protectedMsg.POST("/messages/:contractId", messageHandler.SendMessage)
+			protectedMsg.PUT("/messages/:contractId/read", messageHandler.MarkAsRead)
+		}
+
+		// WebSocket — auth via query param
+		api.GET("/ws/chat/:contractId", messageHandler.HandleWebSocket)
 	}
 }

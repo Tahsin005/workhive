@@ -32,4 +32,5 @@ type Contract struct {
 	Client     User `gorm:"foreignKey:ClientID" json:"client,omitempty"`
 	Freelancer User `gorm:"foreignKey:FreelancerID" json:"freelancer,omitempty"`
 	Payments   []Payment `gorm:"foreignKey:ContractID" json:"-"`
+	Messages   []Message `gorm:"foreignKey:ContractID" json:"-"`
 }

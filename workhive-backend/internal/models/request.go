@@ -89,3 +89,8 @@ type ContractFilter struct {
 type CreatePaymentIntentInput struct {
 	ContractID string `json:"contract_id" validate:"required,uuid"`
 }
+
+// messages
+type SendMessageInput struct {
+	Content string `json:"content" validate:"required,min=1,max=2000"`
+}
