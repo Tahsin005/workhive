@@ -84,3 +84,8 @@ type ContractFilter struct {
 	Page         int    `form:"page,default=1"`
 	Limit        int    `form:"limit,default=10"`
 }
+
+// payments
+type CreatePaymentIntentInput struct {
+	ContractID string `json:"contract_id" validate:"required,uuid"`
+}

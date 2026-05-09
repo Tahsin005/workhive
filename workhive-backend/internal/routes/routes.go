@@ -16,12 +16,14 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	jobRepo := repository.NewJobRepository(db)
 	bidRepo := repository.NewBidRepository(db)
 	contractRepo := repository.NewContractRepository(db)
+	paymentRepo := repository.NewPaymentRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	jobService := services.NewJobService(jobRepo, cfg.JWTSecret)
 	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
 	contractService := services.NewContractService(contractRepo, jobRepo)
+	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -29,6 +31,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	jobHandler := handlers.NewJobHandler(jobService, cfg)
 	bidHandler := handlers.NewBidHandler(bidService)
 	contractHandler := handlers.NewContractHandler(contractService)
+	paymentHandler := handlers.NewPaymentHandler(paymentService)
 
 	r.Static("/uploads", "./uploads")
 
@@ -116,6 +119,30 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			clientOnly.Use(middleware.RoleRequired("client"))
 			{
 				clientOnly.PUT("/:id/complete", contractHandler.CompleteContract)
+			}
+		}
+
+		// payment routes
+		payments := api.Group("/payments")
+		{
+
+
+			// public webhook
+			payments.POST("/webhook", paymentHandler.HandleWebhook)
+
+			// protected payment routes
+			protectedPayments := payments.Group("/")
+			protectedPayments.Use(middleware.AuthRequired(cfg.JWTSecret))
+			{
+				// any authenticated user can view their contract payments
+				protectedPayments.GET("/contract/:id", paymentHandler.GetByContractID)
+
+				// client only routes
+				clientPayments := protectedPayments.Group("/")
+				clientPayments.Use(middleware.RoleRequired("client"))
+				{
+					clientPayments.POST("/intent", paymentHandler.CreateIntent)
+				}
 			}
 		}
 	}

@@ -13,6 +13,8 @@ require (
 	gorm.io/gorm v1.31.1
 )
 
+require github.com/stripe/stripe-go/v81 v81.4.0
+
 require (
 	github.com/bytedance/gopkg v0.1.3 // indirect
 	github.com/bytedance/sonic v1.15.0 // indirect
