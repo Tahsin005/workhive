@@ -31,6 +31,11 @@ Paginated endpoints include pagination metadata in the root response:
 
 ## 1. Auth Endpoints
 
+> **Refresh Token Cookie**
+> The refresh token is delivered and consumed exclusively via an `HttpOnly; SameSite=Strict` cookie named `refresh_token`.
+> It is **never returned in the JSON response body**.
+> All clients must send requests with `credentials: 'include'` (fetch) or `withCredentials: true` (axios).
+
 ### `POST /api/v1/auth/register`
 **Description:** Creates a new user account.
 
@@ -39,16 +44,23 @@ Paginated endpoints include pagination metadata in the root response:
 - **Body:**
   ```json
   {
+    "full_name": "John Doe",
     "email": "user@example.com",
     "password": "securepassword123",
-    "role": "client" // Must be "client" or "freelancer"
+    "role": "client"
   }
   ```
+  `role` must be `"client"` or `"freelancer"`.
 
 **Responses:**
-- `201 Created`: Returns the user object and a JWT `token`.
+- `201 Created`: Returns the user object and a short-lived JWT `token`. Sets the `refresh_token` **HttpOnly cookie**.
 - `400 Bad Request`: Validation error (e.g., weak password, invalid role).
 - `409 Conflict`: Email is already in use.
+
+**Cookie set on success:**
+```
+Set-Cookie: refresh_token=<opaque>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
+```
 
 **Edge Cases:**
 - Email addresses are strictly normalized to lowercase before registration.
@@ -57,7 +69,7 @@ Paginated endpoints include pagination metadata in the root response:
 ---
 
 ### `POST /api/v1/auth/login`
-**Description:** Authenticates a user and returns a JWT token.
+**Description:** Authenticates a user and returns a JWT access token.
 
 **Request:**
 - **Headers:** `Content-Type: application/json`
@@ -70,9 +82,14 @@ Paginated endpoints include pagination metadata in the root response:
   ```
 
 **Responses:**
-- `200 OK`: Returns the user object and a JWT `token`.
+- `200 OK`: Returns the user object and a short-lived JWT `token`. Sets the `refresh_token` **HttpOnly cookie**.
 - `401 Unauthorized`: Generic "Invalid email or password" message.
 - `403 Forbidden`: Account is banned/inactive.
+
+**Cookie set on success:**
+```
+Set-Cookie: refresh_token=<opaque>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
+```
 
 **Edge Cases:**
 - Soft-deleted users are treated as non-existent and will receive a `401 Unauthorized`.
@@ -84,55 +101,57 @@ Paginated endpoints include pagination metadata in the root response:
 **Description:** Returns the currently authenticated user's profile.
 
 **Request:**
-- **Headers:** `Authorization: Bearer <token>`
+- **Headers:** `Authorization: Bearer <access_token>`
 
 **Responses:**
 - `200 OK`: Returns the `User` object (excluding password).
-- `401 Unauthorized`: Invalid or expired token.
+- `401 Unauthorized`: Invalid or expired access token.
 - `404 Not Found`: User no longer exists.
 
 ---
 
 ### `POST /api/v1/auth/refresh`
-**Description:** Refreshes an expired access token using a valid refresh token.
+**Description:** Issues a new access token using the HttpOnly refresh token cookie (token rotation).
 
 **Request:**
-- **Headers:** `Content-Type: application/json`
-- **Body:**
-  ```json
-  {
-    "refresh_token": "opaque_refresh_token_string"
-  }
-  ```
+- **Headers:** none required beyond the automatically sent cookie
+- **Body:** empty — the refresh token is read from the `refresh_token` cookie
+- **Credentials:** must be sent with `credentials: 'include'`
 
 **Responses:**
-- `200 OK`: Returns a new access token and a new refresh token (Token Rotation).
-- `400 Bad Request`: Validation failure.
-- `401 Unauthorized`: Refresh token is invalid or expired.
+- `200 OK`: Returns a new JWT `token` and rotates the `refresh_token` cookie.
+- `401 Unauthorized`: Cookie is missing, invalid, or expired — cookie is cleared.
+
+**Cookie rotated on success:**
+```
+Set-Cookie: refresh_token=<new_opaque>; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=604800
+```
 
 **Edge Cases:**
-- Upon success, the old refresh token is immediately deleted and replaced with a newly generated one (rolling session).
+- The old refresh token is immediately deleted and replaced (rolling session / token rotation).
 - Access tokens expire in 1 hour; Refresh tokens expire in 7 days.
+- On failure the cookie is cleared so the client falls back to the login page.
 
 ---
 
 ### `POST /api/v1/auth/logout`
-**Description:** Logs out a user by invalidating their refresh token.
+**Description:** Logs out a user by invalidating the refresh token and clearing the cookie.
 
 **Request:**
-- **Headers:** `Content-Type: application/json`
-- **Body:**
-  ```json
-  {
-    "refresh_token": "opaque_refresh_token_string"
-  }
-  ```
+- **Headers:** none required beyond the automatically sent cookie
+- **Body:** empty — the refresh token is read from the `refresh_token` cookie
+- **Credentials:** must be sent with `credentials: 'include'`
 
 **Responses:**
-- `200 OK`: Successfully logged out.
+- `200 OK`: Successfully logged out. Cookie is cleared regardless of DB state.
+
+**Cookie cleared on success:**
+```
+Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Age=-1
+```
 
 **Edge Cases:**
-- The provided refresh token is immediately deleted from the database.
+- If the cookie is already absent the endpoint still returns `200 OK`.
 - Any active short-lived access tokens remain valid until they naturally expire (stateless JWT limitation).
 
 ---

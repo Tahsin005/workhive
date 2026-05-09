@@ -50,6 +50,8 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
+	secure := h.cfg.AppEnv == "production"
+	utils.SetRefreshCookie(c, result.RefreshToken, h.cfg.JWTRefreshDays, secure)
 	utils.Created(c, "Registration successful", dto.ToAuthResponse(result))
 }
 
@@ -78,6 +80,8 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
+	secure := h.cfg.AppEnv == "production"
+	utils.SetRefreshCookie(c, result.RefreshToken, h.cfg.JWTRefreshDays, secure)
 	utils.OK(c, "Login successful", dto.ToAuthResponse(result))
 }
 
@@ -156,44 +160,35 @@ func (h *AuthHandler) DeleteMe(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	var input models.RefreshTokenInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.BadRequest(c, "Invalid request body", err.Error())
+	refreshToken, err := c.Cookie("refresh_token")
+	if err != nil || refreshToken == "" {
+		utils.Unauthorized(c, "No refresh token provided")
 		return
 	}
 
-	if err := h.validate.Struct(input); err != nil {
-		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
-		return
-	}
-
-	response, err := h.authService.Refresh(input.RefreshToken)
+	response, err := h.authService.Refresh(refreshToken)
 	if err != nil {
+		secure := h.cfg.AppEnv == "production"
+		utils.ClearRefreshCookie(c, secure)
 		utils.Unauthorized(c, err.Error())
 		return
 	}
 
-	utils.OK(c, "Token refreshed successfully", response)
+	secure := h.cfg.AppEnv == "production"
+	utils.SetRefreshCookie(c, response.RefreshToken, h.cfg.JWTRefreshDays, secure)
+	utils.OK(c, "Token refreshed successfully", dto.ToAuthResponse(response))
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	var input models.RefreshTokenInput
-	if err := c.ShouldBindJSON(&input); err != nil {
-		utils.BadRequest(c, "Invalid request body", err.Error())
-		return
+	secure := h.cfg.AppEnv == "production"
+
+	refreshToken, _ := c.Cookie("refresh_token")
+	if refreshToken != "" {
+		// Best-effort DB deletion — don't block logout on failure
+		_ = h.authService.Logout(refreshToken)
 	}
 
-	if err := h.validate.Struct(input); err != nil {
-		utils.BadRequest(c, "Validation failed", utils.FormatValidationErrors(err))
-		return
-	}
-
-	if err := h.authService.Logout(input.RefreshToken); err != nil {
-		// even if error, return OK for logout to not block user flow
-		utils.OK(c, "Logged out successfully", nil)
-		return
-	}
-
+	utils.ClearRefreshCookie(c, secure)
 	utils.OK(c, "Logged out successfully", nil)
 }
 
