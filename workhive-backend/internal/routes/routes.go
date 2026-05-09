@@ -8,6 +8,7 @@ import (
 	"github.com/Tahsin005/workhive-backend/internal/repository"
 	"github.com/Tahsin005/workhive-backend/internal/services"
 	ws "github.com/Tahsin005/workhive-backend/internal/websocket"
+	"github.com/go-playground/validator/v10"
 	"gorm.io/gorm"
 )
 
@@ -19,6 +20,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	contractRepo := repository.NewContractRepository(db)
 	paymentRepo := repository.NewPaymentRepository(db)
 	messageRepo := repository.NewMessageRepository(db)
+	reviewRepo := repository.NewReviewRepository(db)
 
 	// services
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
@@ -27,6 +29,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	contractService := services.NewContractService(contractRepo, jobRepo)
 	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg)
 	messageService := services.NewMessageService(messageRepo, contractRepo)
+	reviewService := services.NewReviewService(reviewRepo, contractRepo, userRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -36,6 +39,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	contractHandler := handlers.NewContractHandler(contractService)
 	paymentHandler := handlers.NewPaymentHandler(paymentService)
 	messageHandler := handlers.NewMessageHandler(messageService, hub, cfg.JWTSecret)
+	reviewHandler := handlers.NewReviewHandler(reviewService, validator.New())
 
 	r.Static("/uploads", "./uploads")
 
@@ -148,16 +152,31 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			}
 		}
 
-		// message routes — protected
-		protectedMsg := api.Group("/")
-		protectedMsg.Use(middleware.AuthRequired(cfg.JWTSecret))
+		// message routes
+		messages := api.Group("/messages")
+		messages.Use(middleware.AuthRequired(cfg.JWTSecret))
+		messages.Use(middleware.RoleRequired("client", "freelancer"))
 		{
-			protectedMsg.GET("/messages/:contractId", messageHandler.GetHistory)
-			protectedMsg.POST("/messages/:contractId", messageHandler.SendMessage)
-			protectedMsg.PUT("/messages/:contractId/read", messageHandler.MarkAsRead)
+			messages.GET("/:contractId", messageHandler.GetHistory)
+			messages.POST("/:contractId", messageHandler.SendMessage)
+			messages.PUT("/:contractId/read", messageHandler.MarkAsRead)
 		}
 
 		// WebSocket — auth via query param
 		api.GET("/ws/chat/:contractId", messageHandler.HandleWebSocket)
+
+		// review routes
+		reviews := api.Group("/reviews")
+		{
+			// public
+			reviews.GET("/user/:id", reviewHandler.GetUserReviews)
+
+			// protected
+			protectedReviews := reviews.Group("/")
+			protectedReviews.Use(middleware.AuthRequired(cfg.JWTSecret))
+			{
+				protectedReviews.POST("/contract/:id", reviewHandler.SubmitReview)
+			}
+		}
 	}
 }
