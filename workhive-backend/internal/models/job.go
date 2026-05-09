@@ -5,10 +5,10 @@ import "github.com/google/uuid"
 type JobStatus string
 
 const (
-	JobStatusOpen        JobStatus = "open"
-	JobStatusInProgress  JobStatus = "in_progress"
-	JobStatusCompleted   JobStatus = "completed"
-	JobStatusCancelled   JobStatus = "cancelled"
+	JobStatusOpen       JobStatus = "open"
+	JobStatusInProgress JobStatus = "in_progress"
+	JobStatusCompleted  JobStatus = "completed"
+	JobStatusCancelled  JobStatus = "cancelled"
 )
 
 type Job struct {
@@ -22,6 +22,6 @@ type Job struct {
 	Status      JobStatus `gorm:"type:varchar(20);default:'open';index" json:"status"`
 
 	// associations
-	Client User `gorm:"foreignKey:ClientID" json:"client,omitempty"`
+	Client User  `gorm:"foreignKey:ClientID" json:"client,omitempty"`
 	Bids   []Bid `gorm:"foreignKey:JobID" json:"-"`
 }

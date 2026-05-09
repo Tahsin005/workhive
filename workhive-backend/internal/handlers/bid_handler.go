@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"github.com/Tahsin005/workhive-backend/internal/dto"
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/services"
 	"github.com/Tahsin005/workhive-backend/internal/utils"
@@ -58,7 +59,7 @@ func (h *BidHandler) SubmitBid(c *gin.Context) {
 		return
 	}
 
-	utils.Created(c, "Bid submitted successfully", bid)
+	utils.Created(c, "Bid submitted successfully", dto.ToBidResponse(bid))
 }
 
 func (h *BidHandler) ListMyBids(c *gin.Context) {
@@ -78,7 +79,7 @@ func (h *BidHandler) ListMyBids(c *gin.Context) {
 		return
 	}
 
-	utils.PaginatedOK(c, "Bids fetched successfully", bids, total, filter.Page, filter.Limit)
+	utils.PaginatedOK(c, "Bids fetched successfully", dto.ToBidResponses(bids), total, filter.Page, filter.Limit)
 }
 
 func (h *BidHandler) ListJobBids(c *gin.Context) {
@@ -112,7 +113,7 @@ func (h *BidHandler) ListJobBids(c *gin.Context) {
 		return
 	}
 
-	utils.PaginatedOK(c, "Bids fetched successfully", bids, total, filter.Page, filter.Limit)
+	utils.PaginatedOK(c, "Bids fetched successfully", dto.ToBidResponses(bids), total, filter.Page, filter.Limit)
 }
 
 func (h *BidHandler) UpdateBid(c *gin.Context) {
@@ -145,7 +146,7 @@ func (h *BidHandler) UpdateBid(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Bid updated successfully", bid)
+	utils.OK(c, "Bid updated successfully", dto.ToBidResponse(bid))
 }
 
 func (h *BidHandler) WithdrawBid(c *gin.Context) {
@@ -188,7 +189,7 @@ func (h *BidHandler) AcceptBid(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Bid accepted successfully", bid)
+	utils.OK(c, "Bid accepted successfully", dto.ToBidResponse(bid))
 }
 
 func (h *BidHandler) RejectBid(c *gin.Context) {
@@ -210,5 +211,5 @@ func (h *BidHandler) RejectBid(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Bid rejected successfully", bid)
+	utils.OK(c, "Bid rejected successfully", dto.ToBidResponse(bid))
 }

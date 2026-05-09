@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"github.com/Tahsin005/workhive-backend/internal/config"
+	"github.com/Tahsin005/workhive-backend/internal/dto"
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/services"
 	"github.com/Tahsin005/workhive-backend/internal/utils"
@@ -43,7 +44,7 @@ func (h *JobHandler) CreateJob(c *gin.Context) {
 		return
 	}
 
-	utils.Created(c, "Job created successfully", job)
+	utils.Created(c, "Job created successfully", dto.ToJobResponse(job))
 }
 
 func (h *JobHandler) ListJobs(c *gin.Context) {
@@ -59,7 +60,7 @@ func (h *JobHandler) ListJobs(c *gin.Context) {
 		return
 	}
 
-	utils.PaginatedOK(c, "Jobs fetched successfully", jobs, total, filter.Page, filter.Limit)
+	utils.PaginatedOK(c, "Jobs fetched successfully", dto.ToJobResponses(jobs), total, filter.Page, filter.Limit)
 }
 
 func (h *JobHandler) GetJob(c *gin.Context) {
@@ -71,7 +72,7 @@ func (h *JobHandler) GetJob(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Job fetched successfully", job)
+	utils.OK(c, "Job fetched successfully", dto.ToJobResponse(job))
 }
 
 func (h *JobHandler) UpdateJob(c *gin.Context) {
@@ -98,7 +99,7 @@ func (h *JobHandler) UpdateJob(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Job updated successfully", job)
+	utils.OK(c, "Job updated successfully", dto.ToJobResponse(job))
 }
 
 func (h *JobHandler) DeleteJob(c *gin.Context) {
@@ -134,5 +135,5 @@ func (h *JobHandler) ListMyJobs(c *gin.Context) {
 		return
 	}
 
-	utils.PaginatedOK(c, "Jobs fetched successfully", jobs, total, filter.Page, filter.Limit)
+	utils.PaginatedOK(c, "Jobs fetched successfully", dto.ToJobResponses(jobs), total, filter.Page, filter.Limit)
 }

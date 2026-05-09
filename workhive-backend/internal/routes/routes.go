@@ -21,12 +21,14 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 	authService := services.NewAuthService(userRepo, cfg.JWTSecret)
 	jobService := services.NewJobService(jobRepo, cfg.JWTSecret)
 	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
+	contractService := services.NewContractService(contractRepo, jobRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
 	authHandler := handlers.NewAuthHandler(authService, cfg)
 	jobHandler := handlers.NewJobHandler(jobService, cfg)
 	bidHandler := handlers.NewBidHandler(bidService)
+	contractHandler := handlers.NewContractHandler(contractService)
 
 	r.Static("/uploads", "./uploads")
 
@@ -94,6 +96,27 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config) {
 			// accept/reject bid routes (client only)
 			bids.PUT("/:id/accept", middleware.RoleRequired("client"), bidHandler.AcceptBid)
 			bids.PUT("/:id/reject", middleware.RoleRequired("client"), bidHandler.RejectBid)
+		}
+
+		// contract routes
+		contracts := api.Group("/contracts")
+		contracts.Use(middleware.AuthRequired(cfg.JWTSecret))
+		{
+			// routes for both client and freelancer
+			both := contracts.Group("/")
+			both.Use(middleware.RoleRequired("client", "freelancer"))
+			{
+				both.GET("", contractHandler.ListMyContracts)
+				both.GET("/:id", contractHandler.GetContract)
+				both.PUT("/:id/cancel", contractHandler.CancelContract)
+			}
+
+			// routes for client only
+			clientOnly := contracts.Group("/")
+			clientOnly.Use(middleware.RoleRequired("client"))
+			{
+				clientOnly.PUT("/:id/complete", contractHandler.CompleteContract)
+			}
 		}
 	}
 }

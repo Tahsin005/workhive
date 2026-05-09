@@ -72,5 +72,15 @@ type BidFilter struct {
 	JobID        string `form:"job_id"`
 	FreelancerID string `form:"freelancer_id"`
 	Page         int    `form:"page,default=1"`
+	Limit    int     `form:"limit,default=10"`
+}
+
+// contracts
+type ContractFilter struct {
+	Status       string `form:"status"`
+	JobID        string `form:"job_id"`
+	ClientID     string `form:"client_id"`
+	FreelancerID string `form:"freelancer_id"`
+	Page         int    `form:"page,default=1"`
 	Limit        int    `form:"limit,default=10"`
 }

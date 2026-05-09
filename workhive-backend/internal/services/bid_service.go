@@ -5,9 +5,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/repository"
+	"github.com/google/uuid"
 )
 
 type BidService interface {

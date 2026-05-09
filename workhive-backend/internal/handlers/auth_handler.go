@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/Tahsin005/workhive-backend/internal/config"
+	"github.com/Tahsin005/workhive-backend/internal/dto"
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"github.com/Tahsin005/workhive-backend/internal/services"
 	"github.com/Tahsin005/workhive-backend/internal/utils"
@@ -49,7 +50,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	utils.Created(c, "Registration successful", result)
+	utils.Created(c, "Registration successful", dto.ToAuthResponse(result))
 }
 
 func (h *AuthHandler) Login(c *gin.Context) {
@@ -77,7 +78,7 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Login successful", result)
+	utils.OK(c, "Login successful", dto.ToAuthResponse(result))
 }
 
 func (h *AuthHandler) Me(c *gin.Context) {
@@ -89,7 +90,7 @@ func (h *AuthHandler) Me(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "User fetched successfully", user)
+	utils.OK(c, "User fetched successfully", dto.ToUserResponse(user))
 }
 
 func (h *AuthHandler) UpdateProfile(c *gin.Context) {
@@ -111,7 +112,7 @@ func (h *AuthHandler) UpdateProfile(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Profile updated successfully", user)
+	utils.OK(c, "Profile updated successfully", dto.ToUserResponse(user))
 }
 
 func (h *AuthHandler) ChangePassword(c *gin.Context) {
@@ -217,5 +218,5 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 		return
 	}
 
-	utils.OK(c, "Avatar updated successfully", updatedUser)
+	utils.OK(c, "Avatar updated successfully", dto.ToUserResponse(updatedUser))
 }
