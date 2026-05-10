@@ -10,6 +10,12 @@ export interface User {
   updated_at: string
 }
 
+export interface UserBrief {
+  id: string
+  full_name: string
+  avatar_url: string | null
+}
+
 export interface ApiResponse<T> {
   success: boolean
   message: string
