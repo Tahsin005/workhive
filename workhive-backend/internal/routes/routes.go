@@ -78,7 +78,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			jobs.GET("", jobHandler.ListJobs)
 
 			// protected job routes
-			protectedJobs := jobs.Group("/")
+			protectedJobs := jobs.Group("")
 			protectedJobs.Use(middleware.AuthRequired(cfg.JWTSecret))
 			{
 				protectedJobs.GET("/my", middleware.RoleRequired("client"), jobHandler.ListMyJobs)
