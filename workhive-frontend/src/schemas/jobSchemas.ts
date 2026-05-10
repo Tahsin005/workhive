@@ -17,3 +17,13 @@ export const postJobSchema = z.object({
 })
 
 export type PostJobFormValues = z.infer<typeof postJobSchema>
+
+export const submitBidSchema = z.object({
+  amount: z.string().min(1, "Amount is required").refine(
+    (val) => !isNaN(Number(val)) && Number(val) >= 5,
+    "Bid amount must be at least $5"
+  ),
+  cover_letter: z.string().min(50, "Cover letter must be at least 50 characters to provide enough detail."),
+})
+
+export type SubmitBidFormValues = z.infer<typeof submitBidSchema>

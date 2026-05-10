@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { Job, CreateJobRequest, UpdateJobRequest, PaginatedJobs } from '@/types/job'
-import type { Bid } from '@/types/bid'
+import type { Bid, SubmitBidRequest } from '@/types/bid'
 import type { ApiResponse } from '@/types/auth'
 import type { RootState } from '../index'
 
@@ -20,6 +20,13 @@ export const jobsApi = createApi({
   baseQuery,
   tagTypes: ['Jobs', 'MyJobs', 'Job', 'JobBids'],
   endpoints: (builder) => ({
+    getJobs: builder.query<PaginatedJobs, { page?: number; limit?: number; category?: string; search?: string; min_price?: number; max_price?: number }>({
+      query: (params) => ({
+        url: '/jobs',
+        params,
+      }),
+      providesTags: ['Jobs'],
+    }),
     getMyJobs: builder.query<PaginatedJobs, { page?: number; limit?: number }>({
       query: (params) => ({
         url: '/jobs/my',
@@ -62,14 +69,51 @@ export const jobsApi = createApi({
       query: (id) => `/jobs/${id}/bids`,
       providesTags: (result, error, id) => [{ type: 'JobBids', id }],
     }),
+    submitBid: builder.mutation<ApiResponse<Bid>, { id: string; data: SubmitBidRequest }>({
+      query: ({ id, data }) => ({
+        url: `/jobs/${id}/bids`,
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [
+        { type: 'JobBids', id },
+        { type: 'Job', id },
+        'Jobs'
+      ],
+    }),
+    acceptBid: builder.mutation<ApiResponse<Bid>, { bidId: string; jobId: string }>({
+      query: ({ bidId }) => ({
+        url: `/bids/${bidId}/accept`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (result, error, { jobId }) => [
+        { type: 'JobBids', id: jobId },
+        { type: 'Job', id: jobId },
+        'MyJobs',
+        'Jobs'
+      ],
+    }),
+    rejectBid: builder.mutation<ApiResponse<void>, { bidId: string; jobId: string }>({
+      query: ({ bidId }) => ({
+        url: `/bids/${bidId}/reject`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (result, error, { jobId }) => [
+        { type: 'JobBids', id: jobId }
+      ],
+    }),
   }),
 })
 
 export const {
+  useGetJobsQuery,
   useGetMyJobsQuery,
   useGetJobQuery,
   useCreateJobMutation,
   useUpdateJobMutation,
   useDeleteJobMutation,
   useGetJobBidsQuery,
+  useSubmitBidMutation,
+  useAcceptBidMutation,
+  useRejectBidMutation,
 } = jobsApi

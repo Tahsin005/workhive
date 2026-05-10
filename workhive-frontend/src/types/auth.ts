@@ -22,7 +22,11 @@ export interface ApiResponse<T> {
   data: T
 }
 
-export interface AuthResponse {
+export interface TokenPair {
   token: string
+  refresh_token: string
+}
+
+export interface AuthResponse extends TokenPair {
   user: User
 }

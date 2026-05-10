@@ -1,8 +1,14 @@
-import { useParams, Link } from "react-router"
+import { useParams, Link, useNavigate } from "react-router"
 import { format } from "date-fns"
+import { toast } from "sonner"
 import { ArrowLeft, Loader2, DollarSign, FileText, CheckCircle2, XCircle } from "lucide-react"
 
-import { useGetJobBidsQuery, useGetJobQuery } from "@/store/api/jobsApi"
+import { 
+  useGetJobBidsQuery, 
+  useGetJobQuery, 
+  useAcceptBidMutation, 
+  useRejectBidMutation 
+} from "@/store/api/jobsApi"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import {
@@ -16,12 +22,39 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 export default function JobBidsPage() {
   const { id } = useParams()
+  const navigate = useNavigate()
   
   const { data: jobData, isLoading: isLoadingJob } = useGetJobQuery(id!)
   const { data: bidsData, isLoading: isLoadingBids, isError } = useGetJobBidsQuery(id!)
+  
+  const [acceptBid, { isLoading: isAccepting }] = useAcceptBidMutation()
+  const [rejectBid, { isLoading: isRejecting }] = useRejectBidMutation()
 
   const job = jobData?.data
   const bids = bidsData?.data || []
+
+  const handleAccept = async (bidId: string) => {
+    if (window.confirm("Are you sure you want to accept this proposal? This will immediately generate a contract and reject all other pending bids.")) {
+      try {
+        await acceptBid({ bidId, jobId: id! }).unwrap()
+        toast.success("Proposal accepted! A contract has been created.")
+        navigate('/client/contracts')
+      } catch (err: any) {
+        toast.error(err.data?.message || "Failed to accept the proposal.")
+      }
+    }
+  }
+
+  const handleReject = async (bidId: string) => {
+    if (window.confirm("Are you sure you want to reject this proposal?")) {
+      try {
+        await rejectBid({ bidId, jobId: id! }).unwrap()
+        toast.success("Proposal rejected.")
+      } catch (err: any) {
+        toast.error(err.data?.message || "Failed to reject the proposal.")
+      }
+    }
+  }
 
   if (isLoadingJob || isLoadingBids) {
     return (
@@ -116,11 +149,20 @@ export default function JobBidsPage() {
 
                   {bid.status === 'pending' && job.status === 'open' && (
                     <div className="flex items-center justify-end gap-3 pt-2 border-t border-dashed">
-                      <Button variant="outline" className="text-destructive hover:bg-destructive/10 border-destructive/20">
+                      <Button 
+                        variant="outline" 
+                        className="text-destructive hover:bg-destructive/10 border-destructive/20"
+                        onClick={() => handleReject(bid.id)}
+                        disabled={isAccepting || isRejecting}
+                      >
                         <XCircle className="mr-2 h-4 w-4" />
                         Reject Bid
                       </Button>
-                      <Button className="bg-green-600 hover:bg-green-700">
+                      <Button 
+                        className="bg-green-600 hover:bg-green-700"
+                        onClick={() => handleAccept(bid.id)}
+                        disabled={isAccepting || isRejecting}
+                      >
                         <CheckCircle2 className="mr-2 h-4 w-4" />
                         Accept & Create Contract
                       </Button>

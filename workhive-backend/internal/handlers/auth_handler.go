@@ -50,8 +50,6 @@ func (h *AuthHandler) Register(c *gin.Context) {
 		return
 	}
 
-	secure := h.cfg.AppEnv == "production"
-	utils.SetRefreshCookie(c, result.RefreshToken, h.cfg.JWTRefreshDays, secure)
 	utils.Created(c, "Registration successful", dto.ToAuthResponse(result))
 }
 
@@ -80,8 +78,6 @@ func (h *AuthHandler) Login(c *gin.Context) {
 		return
 	}
 
-	secure := h.cfg.AppEnv == "production"
-	utils.SetRefreshCookie(c, result.RefreshToken, h.cfg.JWTRefreshDays, secure)
 	utils.OK(c, "Login successful", dto.ToAuthResponse(result))
 }
 
@@ -160,35 +156,28 @@ func (h *AuthHandler) DeleteMe(c *gin.Context) {
 }
 
 func (h *AuthHandler) Refresh(c *gin.Context) {
-	refreshToken, err := c.Cookie("refresh_token")
-	if err != nil || refreshToken == "" {
+	var input models.RefreshTokenInput
+	if err := c.ShouldBindJSON(&input); err != nil || input.RefreshToken == "" {
 		utils.Unauthorized(c, "No refresh token provided")
 		return
 	}
 
-	response, err := h.authService.Refresh(refreshToken)
+	response, err := h.authService.Refresh(input.RefreshToken)
 	if err != nil {
-		secure := h.cfg.AppEnv == "production"
-		utils.ClearRefreshCookie(c, secure)
 		utils.Unauthorized(c, err.Error())
 		return
 	}
 
-	secure := h.cfg.AppEnv == "production"
-	utils.SetRefreshCookie(c, response.RefreshToken, h.cfg.JWTRefreshDays, secure)
 	utils.OK(c, "Token refreshed successfully", dto.ToAuthResponse(response))
 }
 
 func (h *AuthHandler) Logout(c *gin.Context) {
-	secure := h.cfg.AppEnv == "production"
-
-	refreshToken, _ := c.Cookie("refresh_token")
-	if refreshToken != "" {
-		// Best-effort DB deletion — don't block logout on failure
-		_ = h.authService.Logout(refreshToken)
+	// Logout is now purely client-side — clear localStorage on the frontend.
+	// Best-effort: if the client sends their refresh token, invalidate it in the DB.
+	var input models.RefreshTokenInput
+	if err := c.ShouldBindJSON(&input); err == nil && input.RefreshToken != "" {
+		_ = h.authService.Logout(input.RefreshToken)
 	}
-
-	utils.ClearRefreshCookie(c, secure)
 	utils.OK(c, "Logged out successfully", nil)
 }
 

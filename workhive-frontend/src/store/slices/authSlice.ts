@@ -24,6 +24,7 @@ const authSlice = createSlice({
       state.token = null
       state.isInitialized = true
       localStorage.removeItem('token')
+      localStorage.removeItem('refreshToken')
     },
     setInitialized: (state) => {
       state.isInitialized = true
@@ -42,22 +43,25 @@ const authSlice = createSlice({
         state.token = null
         state.isInitialized = true
         localStorage.removeItem('token')
+        localStorage.removeItem('refreshToken')
       }
     )
     builder.addMatcher(
       authApi.endpoints.login.matchFulfilled,
       (state, action) => {
-        const { token } = action.payload.data
+        const { token, refresh_token } = action.payload.data
         state.token = token
         localStorage.setItem('token', token)
+        localStorage.setItem('refreshToken', refresh_token)
       }
     )
     builder.addMatcher(
       authApi.endpoints.register.matchFulfilled,
       (state, action) => {
-        const { token } = action.payload.data
+        const { token, refresh_token } = action.payload.data
         state.token = token
         localStorage.setItem('token', token)
+        localStorage.setItem('refreshToken', refresh_token)
       }
     )
   },

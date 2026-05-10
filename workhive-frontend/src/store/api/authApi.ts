@@ -2,15 +2,15 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { BaseQueryFn, FetchArgs, FetchBaseQueryError } from '@reduxjs/toolkit/query'
 import { Mutex } from 'async-mutex'
 import type { RootState } from '..'
-import type { ApiResponse, AuthResponse, User } from '../../types/auth'
+import type { ApiResponse, AuthResponse, TokenPair, User } from '../../types/auth'
 import { clearAuth, setToken } from '../slices/authSlice'
 
 // Mutex prevents multiple simultaneous refresh calls (e.g. parallel 401s)
 const mutex = new Mutex()
 
+// No `credentials: 'include'` — refresh token is in localStorage, not a cookie
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
-  credentials: 'include', // Important for sending/receiving cookies
   prepareHeaders: (headers, { getState }) => {
     const token = (getState() as RootState).auth.token
     if (token) {
@@ -20,13 +20,12 @@ const rawBaseQuery = fetchBaseQuery({
   },
 })
 
-// Reauth interceptor — wraps rawBaseQuery
+// Reauth interceptor — uses localStorage refresh token on 401
 const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
   extraOptions
 ) => {
-  // wait if another request is already refreshing
   await mutex.waitForUnlock()
 
   let result = await rawBaseQuery(args, api, extraOptions)
@@ -35,30 +34,40 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
     if (!mutex.isLocked()) {
       const release = await mutex.acquire()
       try {
-        // attempt token rotation using HttpOnly cookie (no body needed)
+        const refreshToken = localStorage.getItem('refreshToken')
+
+        if (!refreshToken) {
+          api.dispatch(clearAuth())
+          return result
+        }
+
+        // Send refresh token in request body
         const refreshResult = await rawBaseQuery(
           {
             url: '/auth/refresh',
             method: 'POST',
+            body: { refresh_token: refreshToken },
           },
           api,
           extraOptions
         )
 
         if (refreshResult.data) {
-          const data = (refreshResult.data as ApiResponse<{ token: string }>).data
+          const data = (refreshResult.data as ApiResponse<TokenPair>).data
           api.dispatch(setToken(data.token))
-          // retry the original request with the new token
+          localStorage.setItem('token', data.token)
+          localStorage.setItem('refreshToken', data.refresh_token)
+          // Retry the original request with the new access token
           result = await rawBaseQuery(args, api, extraOptions)
         } else {
-          // refresh failed — log out (cookie is cleared by server)
+          // Refresh failed — log the user out completely
           api.dispatch(clearAuth())
         }
       } finally {
         release()
       }
     } else {
-      // another request is already refreshing — wait and retry with the new token
+      // Another request is already refreshing — wait and retry
       await mutex.waitForUnlock()
       result = await rawBaseQuery(args, api, extraOptions)
     }
@@ -90,10 +99,11 @@ export const authApi = createApi({
       query: () => '/auth/me',
       providesTags: ['User'],
     }),
-    refresh: builder.mutation<ApiResponse<{ token: string }>, void>({
-      query: () => ({
+    refresh: builder.mutation<ApiResponse<TokenPair>, { refresh_token: string }>({
+      query: (body) => ({
         url: '/auth/refresh',
         method: 'POST',
+        body,
       }),
     }),
   }),

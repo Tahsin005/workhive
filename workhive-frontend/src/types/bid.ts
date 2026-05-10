@@ -1,5 +1,5 @@
-import { UserBrief } from './auth'
-import { Job } from './job'
+import type { UserBrief } from './auth'
+import type { Job } from './job'
 
 export interface Bid {
   id: string
@@ -12,4 +12,9 @@ export interface Bid {
   updated_at: string
   freelancer?: UserBrief
   job?: Job
+}
+
+export interface SubmitBidRequest {
+  amount: number
+  cover_letter: string
 }

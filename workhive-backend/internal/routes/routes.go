@@ -118,20 +118,13 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 		contracts.Use(middleware.AuthRequired(cfg.JWTSecret))
 		{
 			// routes for both client and freelancer
-			both := contracts.Group("/")
-			both.Use(middleware.RoleRequired("client", "freelancer"))
-			{
-				both.GET("", contractHandler.ListMyContracts)
-				both.GET("/:id", contractHandler.GetContract)
-				both.PUT("/:id/cancel", contractHandler.CancelContract)
-			}
+			contracts.GET("", middleware.RoleRequired("client", "freelancer"), contractHandler.ListMyContracts)
+			contracts.GET("/", middleware.RoleRequired("client", "freelancer"), contractHandler.ListMyContracts)
+			contracts.GET("/:id", middleware.RoleRequired("client", "freelancer"), contractHandler.GetContract)
+			contracts.PUT("/:id/cancel", middleware.RoleRequired("client", "freelancer"), contractHandler.CancelContract)
 
 			// routes for client only
-			clientOnly := contracts.Group("/")
-			clientOnly.Use(middleware.RoleRequired("client"))
-			{
-				clientOnly.PUT("/:id/complete", contractHandler.CompleteContract)
-			}
+			contracts.PUT("/:id/complete", middleware.RoleRequired("client"), contractHandler.CompleteContract)
 		}
 
 		// payment routes
@@ -141,19 +134,8 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			payments.POST("/webhook", paymentHandler.HandleWebhook)
 
 			// protected payment routes
-			protectedPayments := payments.Group("/")
-			protectedPayments.Use(middleware.AuthRequired(cfg.JWTSecret))
-			{
-				// any authenticated user can view their contract payments
-				protectedPayments.GET("/contract/:id", paymentHandler.GetByContractID)
-
-				// client only routes
-				clientPayments := protectedPayments.Group("/")
-				clientPayments.Use(middleware.RoleRequired("client"))
-				{
-					clientPayments.POST("/intent", paymentHandler.CreateIntent)
-				}
-			}
+			payments.GET("/contract/:id", middleware.AuthRequired(cfg.JWTSecret), paymentHandler.GetByContractID)
+			payments.POST("/intent", middleware.AuthRequired(cfg.JWTSecret), middleware.RoleRequired("client"), paymentHandler.CreateIntent)
 		}
 
 		// message routes
@@ -176,11 +158,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			reviews.GET("/user/:id", reviewHandler.GetUserReviews)
 
 			// protected
-			protectedReviews := reviews.Group("/")
-			protectedReviews.Use(middleware.AuthRequired(cfg.JWTSecret))
-			{
-				protectedReviews.POST("/contract/:id", reviewHandler.SubmitReview)
-			}
+			reviews.POST("/contract/:id", middleware.AuthRequired(cfg.JWTSecret), reviewHandler.SubmitReview)
 		}
 
 		// admin routes

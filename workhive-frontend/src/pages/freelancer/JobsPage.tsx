@@ -18,8 +18,11 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Card,
+  CardContent,
   CardDescription,
+  CardHeader,
   CardTitle,
+  CardFooter
 } from "@/components/ui/card"
 import {
   Pagination,
@@ -29,7 +32,7 @@ import {
   PaginationPrevious,
 } from "@/components/ui/pagination"
 
-export default function BrowseJobsPage() {
+export default function JobsPage() {
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
