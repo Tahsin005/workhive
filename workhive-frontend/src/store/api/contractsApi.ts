@@ -30,7 +30,7 @@ export const contractsApi = createApi({
   baseQuery,
   tagTypes: ['Contracts', 'Contract'],
   endpoints: (builder) => ({
-    getContracts: builder.query<ContractListResponse, { page?: number; limit?: number; status?: string }>({
+    getContracts: builder.query<ContractListResponse, { page?: number; limit?: number; status?: string; job_id?: string; freelancer_id?: string; client_id?: string }>({
       query: (params) => ({
         url: '/contracts',
         params,
@@ -45,14 +45,14 @@ export const contractsApi = createApi({
     }),
     getContract: builder.query<ApiResponse<Contract>, string>({
       query: (id) => `/contracts/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Contract', id }],
+      providesTags: (_, __, id) => [{ type: 'Contract', id }],
     }),
     cancelContract: builder.mutation<ApiResponse<void>, string>({
       query: (id) => ({
         url: `/contracts/${id}/cancel`,
         method: 'PUT',
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: (_, __, id) => [
         { type: 'Contract', id },
         { type: 'Contracts', id: 'LIST' }
       ],
@@ -62,7 +62,28 @@ export const contractsApi = createApi({
         url: `/contracts/${id}/complete`,
         method: 'PUT',
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: (_, __, id) => [
+        { type: 'Contract', id },
+        { type: 'Contracts', id: 'LIST' }
+      ],
+    }),
+    disputeContract: builder.mutation<ApiResponse<void>, string>({
+      query: (id) => ({
+        url: `/contracts/${id}/dispute`,
+        method: 'PUT',
+      }),
+      invalidatesTags: (_, __, id) => [
+        { type: 'Contract', id },
+        { type: 'Contracts', id: 'LIST' }
+      ],
+    }),
+    resolveDispute: builder.mutation<ApiResponse<void>, { id: string; resolution: 'complete' | 'cancel' }>({
+      query: ({ id, resolution }) => ({
+        url: `/admin/contracts/${id}/resolve`,
+        method: 'PUT',
+        body: { resolution },
+      }),
+      invalidatesTags: (_, __, { id }) => [
         { type: 'Contract', id },
         { type: 'Contracts', id: 'LIST' }
       ],
@@ -75,4 +96,6 @@ export const {
   useGetContractQuery,
   useCancelContractMutation,
   useCompleteContractMutation,
+  useDisputeContractMutation,
+  useResolveDisputeMutation,
 } = contractsApi

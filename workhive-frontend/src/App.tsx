@@ -20,6 +20,8 @@ import NotFoundPage from "./pages/public/NotFoundPage"
 import LoginPage from "./pages/LoginPage"
 import RegisterPage from "./pages/RegisterPage"
 import PublicProfilePage from "./pages/shared/PublicProfilePage"
+import PublicJobsPage from "./pages/public/PublicJobsPage"
+import PublicJobDetailPage from "./pages/public/PublicJobDetailPage"
 
 import ClientDashboard from "./pages/client/ClientDashboard"
 import PostJobPage from "./pages/client/PostJobPage"
@@ -47,6 +49,7 @@ import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage"
 
 import ProfilePage from "./pages/shared/ProfilePage"
 import { Route, Routes } from "react-router"
+import GuestRoute from "./components/shared/GuestRoute"
 
 function App() {
   const dispatch = useDispatch()
@@ -77,9 +80,14 @@ function App() {
       <Routes>
         <Route element={<RootLayout />}>
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/register" element={<RegisterPage />} />
+          <Route path="/jobs" element={<PublicJobsPage />} />
+          <Route path="/jobs/:id" element={<PublicJobDetailPage />} />
           <Route path="/profile/:id" element={<PublicProfilePage />} />
+          
+          <Route element={<GuestRoute />}>
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+          </Route>
         </Route>
 
 

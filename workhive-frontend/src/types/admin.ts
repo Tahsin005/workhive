@@ -1,4 +1,4 @@
-import { UserBrief } from './auth'
+import type { UserBrief } from './auth'
 
 export interface AdminUser {
   id: string

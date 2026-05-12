@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router'
+import { Link, NavLink, useNavigate } from 'react-router'
 import { LayoutDashboard, Users, Briefcase, LogOut } from 'lucide-react'
 import { useDispatch } from 'react-redux'
 import { clearAuth } from '@/store/slices/authSlice'
@@ -35,7 +35,7 @@ export default function AdminSidebar({
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b border-gray-800">
-        <h1 className="text-2xl font-bold tracking-tight text-white">WorkHive Admin</h1>
+        <Link to="/" className="text-2xl font-bold tracking-tight text-white">WorkHive Admin</Link>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-1">

@@ -34,7 +34,7 @@ export const paymentsApi = createApi({
   endpoints: (builder) => ({
     getPaymentByContract: builder.query<ApiResponse<Payment[]>, string>({
       query: (contractId) => `/payments/contract/${contractId}`,
-      providesTags: (result, error, id) => [{ type: 'ContractPayments', id }],
+      providesTags: ( _, __, id) => [{ type: 'ContractPayments', id }],
     }),
     getMyPayments: builder.query<ApiResponse<Payment[]>, { page?: number; limit?: number }>({
       query: (params) => ({

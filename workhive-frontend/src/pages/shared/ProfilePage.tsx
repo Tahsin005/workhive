@@ -1,10 +1,9 @@
-import { useState, useRef } from 'react'
+import { useRef } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import * as z from 'zod'
 import { toast } from 'sonner'
 import { 
-  User, 
   Camera, 
   Loader2, 
   Lock, 
@@ -134,7 +133,7 @@ export default function ProfilePage() {
             <CardContent className="pt-8 flex flex-col items-center text-center">
               <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                 <Avatar className="h-32 w-32 ring-4 ring-primary/10 transition-all group-hover:ring-primary/20">
-                  <AvatarImage src={user?.avatar_url} alt={user?.full_name} />
+                  <AvatarImage src={user?.avatar_url || undefined} alt={user?.full_name} />
                   <AvatarFallback className="text-3xl bg-primary/5 text-primary">
                     {user?.full_name?.[0]?.toUpperCase()}
                   </AvatarFallback>

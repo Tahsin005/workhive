@@ -46,7 +46,7 @@ export const reviewsApi = createApi({
         url: `/reviews/user/${userId}`,
         params,
       }),
-      providesTags: (result, error, { userId }) => [{ type: 'UserReviews', id: userId }],
+      providesTags: ( _, __, { userId }) => [{ type: 'UserReviews', id: userId }],
     }),
     submitReview: builder.mutation<ApiResponse<Review>, { contractId: string; body: SubmitReviewRequest }>({
       query: ({ contractId, body }) => ({

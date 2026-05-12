@@ -156,4 +156,31 @@
     .glass {
         @apply bg-background/60 backdrop-blur-md border border-border/50;
     }
+
+    .premium-glass {
+        @apply bg-white/70 backdrop-blur-xl border border-white/40 shadow-[0_8px_32px_0_rgba(31,38,135,0.05)];
+    }
+
+    .premium-shadow {
+        box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08), 0 1px 4px -1px rgba(0, 0, 0, 0.02);
+    }
+
+    .premium-shadow-hover {
+        box-shadow: 0 20px 40px -15px rgba(0, 0, 0, 0.12), 0 1px 10px -1px rgba(0, 0, 0, 0.05);
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .animate-fade-in-up {
+        animation: fadeInUp 0.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
 }

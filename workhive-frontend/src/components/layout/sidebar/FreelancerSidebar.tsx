@@ -1,4 +1,4 @@
-import { NavLink, useNavigate } from 'react-router'
+import { Link, NavLink, useNavigate } from 'react-router'
 import { LayoutDashboard, Search, Send, FileText, User, LogOut } from 'lucide-react'
 import { useDispatch } from 'react-redux'
 import { clearAuth } from '@/store/slices/authSlice'
@@ -37,7 +37,7 @@ export default function FreelancerSidebar({
   const SidebarContent = () => (
     <>
       <div className="p-6 border-b">
-        <h1 className="text-2xl font-bold tracking-tight text-primary">WorkHive</h1>
+        <Link to="/" className="text-2xl font-bold tracking-tight text-primary">WorkHive</Link>
       </div>
 
       <nav className="flex-1 overflow-y-auto p-4 space-y-1">

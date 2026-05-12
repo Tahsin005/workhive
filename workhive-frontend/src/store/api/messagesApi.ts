@@ -17,15 +17,11 @@ const baseQuery = fetchBaseQuery({
 export const messagesApi = createApi({
   reducerPath: 'messagesApi',
   baseQuery,
-  tagTypes: ['Messages', 'UnreadCount'],
+  tagTypes: ['Messages'],
   endpoints: (builder) => ({
-    getHistory: builder.query<ApiResponse<Message[]>, string>({
+    getHistory: builder.query<ApiResponse<Message[]>, string>({ 
       query: (contractId) => `/messages/${contractId}`,
-      providesTags: (result, error, contractId) => [{ type: 'Messages', id: contractId }],
-    }),
-    getUnreadCount: builder.query<ApiResponse<{ total: number }>, void>({
-      query: () => '/messages/unread',
-      providesTags: ['UnreadCount'],
+      providesTags: (_, __, contractId) => [{ type: 'Messages', id: contractId }],
     }),
     sendMessage: builder.mutation<ApiResponse<Message>, { contractId: string; body: SendMessageRequest }>({
       query: ({ contractId, body }) => ({
@@ -33,23 +29,20 @@ export const messagesApi = createApi({
         method: 'POST',
         body,
       }),
+      invalidatesTags: (_, __, { contractId }) => [{ type: 'Messages', id: contractId }],
     }),
     markAsRead: builder.mutation<ApiResponse<{ updated: number }>, string>({
       query: (contractId) => ({
         url: `/messages/${contractId}/read`,
-        method: 'PUT',
+        method: 'POST',
       }),
-      invalidatesTags: (result, error, contractId) => [
-        { type: 'Messages', id: contractId },
-        'UnreadCount'
-      ],
+      invalidatesTags: (_, __, contractId) => [{ type: 'Messages', id: contractId }],
     }),
   }),
 })
 
 export const { 
   useGetHistoryQuery, 
-  useGetUnreadCountQuery,
-  useSendMessageMutation, 
+  useSendMessageMutation,
   useMarkAsReadMutation 
 } = messagesApi

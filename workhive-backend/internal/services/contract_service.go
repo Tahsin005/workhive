@@ -14,6 +14,8 @@ type ContractService interface {
 	GetContractByID(id string, userID uuid.UUID) (*models.Contract, error)
 	CompleteContract(id string, clientID uuid.UUID) (*models.Contract, error)
 	CancelContract(id string, userID uuid.UUID) (*models.Contract, error)
+	DisputeContract(id string, userID uuid.UUID) (*models.Contract, error)
+	ResolveDispute(id string, resolution string) (*models.Contract, error)
 }
 
 type contractService struct {
@@ -120,6 +122,67 @@ func (s *contractService) CancelContract(id string, userID uuid.UUID) (*models.C
 
 	// Restore all rejected/accepted bids for this job back to pending
 	_ = s.contractRepo.RestoreBids(contract.JobID.String())
+
+	return contract, nil
+}
+
+func (s *contractService) DisputeContract(id string, userID uuid.UUID) (*models.Contract, error) {
+	contract, err := s.contractRepo.GetByID(id)
+	if err != nil {
+		return nil, errors.New("contract not found")
+	}
+
+	if contract.ClientID != userID && contract.FreelancerID != userID {
+		return nil, errors.New("unauthorized")
+	}
+
+	if contract.Status != models.ContractStatusActive {
+		return nil, errors.New("only active contracts can be disputed")
+	}
+
+	contract.Status = models.ContractStatusDisputed
+
+	if err := s.contractRepo.Update(contract); err != nil {
+		return nil, err
+	}
+
+	return contract, nil
+}
+
+func (s *contractService) ResolveDispute(id string, resolution string) (*models.Contract, error) {
+	contract, err := s.contractRepo.GetByID(id)
+	if err != nil {
+		return nil, errors.New("contract not found")
+	}
+
+	if contract.Status != models.ContractStatusDisputed {
+		return nil, errors.New("contract is not in dispute")
+	}
+
+	if resolution == "complete" {
+		now := time.Now()
+		contract.Status = models.ContractStatusCompleted
+		contract.CompletedAt = &now
+		
+		contract.Job.Status = models.JobStatusCompleted
+		if err := s.jobRepo.Update(&contract.Job); err != nil {
+			return nil, err
+		}
+	} else if resolution == "cancel" {
+		contract.Status = models.ContractStatusCancelled
+		
+		contract.Job.Status = models.JobStatusOpen
+		if err := s.jobRepo.Update(&contract.Job); err != nil {
+			return nil, err
+		}
+		_ = s.contractRepo.RestoreBids(contract.JobID.String())
+	} else {
+		return nil, errors.New("invalid resolution")
+	}
+
+	if err := s.contractRepo.Update(contract); err != nil {
+		return nil, err
+	}
 
 	return contract, nil
 }

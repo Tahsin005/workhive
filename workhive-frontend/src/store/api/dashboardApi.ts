@@ -1,9 +1,9 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { ApiResponse } from '@/types/auth'
 import type { RootState } from '../index'
-import type { Job } from './jobsApi'
-import type { Contract } from './contractsApi'
-import type { Bid } from './bidsApi'
+import type { Job } from '@/types/job'
+import type { Contract } from '@/types/contract'
+import type { Bid } from '@/types/bid'
 
 export interface ClientDashboardData {
   stats: {

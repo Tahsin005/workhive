@@ -49,7 +49,7 @@ export const bidsApi = createApi({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: ( _, __, { id }) => [
         { type: 'Bid', id },
         { type: 'Bids', id: 'LIST' }
       ],
@@ -59,7 +59,7 @@ export const bidsApi = createApi({
         url: `/bids/${id}/withdraw`,
         method: 'PATCH',
       }),
-      invalidatesTags: (result, error, id) => [
+      invalidatesTags: ( _, __, id) => [
         { type: 'Bid', id },
         { type: 'Bids', id: 'LIST' }
       ],

@@ -107,3 +107,53 @@ func (h *ContractHandler) CancelContract(c *gin.Context) {
 
 	utils.OK(c, "Contract cancelled successfully", dto.ToContractResponse(contract))
 }
+
+func (h *ContractHandler) DisputeContract(c *gin.Context) {
+	id := c.Param("id")
+	userID, _ := c.Get("userID")
+
+	contract, err := h.contractService.DisputeContract(id, userID.(uuid.UUID))
+	if err != nil {
+		switch err.Error() {
+		case "contract not found":
+			utils.NotFound(c, err.Error())
+		case "unauthorized":
+			utils.Forbidden(c, "You don't have permission to dispute this contract")
+		case "only active contracts can be disputed":
+			utils.BadRequest(c, err.Error(), nil)
+		default:
+			utils.InternalError(c, "Failed to dispute contract")
+		}
+		return
+	}
+
+	utils.OK(c, "Contract placed in dispute", dto.ToContractResponse(contract))
+}
+
+func (h *ContractHandler) ResolveDispute(c *gin.Context) {
+	id := c.Param("id")
+	
+	var body struct {
+		Resolution string `json:"resolution" binding:"required,oneof=complete cancel"`
+	}
+
+	if err := c.ShouldBindJSON(&body); err != nil {
+		utils.BadRequest(c, "Invalid resolution", err.Error())
+		return
+	}
+
+	contract, err := h.contractService.ResolveDispute(id, body.Resolution)
+	if err != nil {
+		switch err.Error() {
+		case "contract not found":
+			utils.NotFound(c, err.Error())
+		case "contract is not in dispute", "invalid resolution":
+			utils.BadRequest(c, err.Error(), nil)
+		default:
+			utils.InternalError(c, "Failed to resolve dispute")
+		}
+		return
+	}
+
+	utils.OK(c, "Dispute resolved successfully", dto.ToContractResponse(contract))
+}

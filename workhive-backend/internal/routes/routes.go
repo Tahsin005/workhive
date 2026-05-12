@@ -135,6 +135,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			contracts.GET("/", middleware.RoleRequired("client", "freelancer"), contractHandler.ListMyContracts)
 			contracts.GET("/:id", middleware.RoleRequired("client", "freelancer"), contractHandler.GetContract)
 			contracts.PUT("/:id/cancel", middleware.RoleRequired("client", "freelancer"), contractHandler.CancelContract)
+			contracts.PUT("/:id/dispute", middleware.RoleRequired("client", "freelancer"), contractHandler.DisputeContract)
 
 			// routes for client only
 			contracts.PUT("/:id/complete", middleware.RoleRequired("client"), contractHandler.CompleteContract)
@@ -187,6 +188,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			admin.GET("/jobs", adminHandler.ListJobs)
 			admin.DELETE("/jobs/:id", adminHandler.DeleteJob)
 			admin.GET("/stats", adminHandler.GetStats)
+			admin.PUT("/contracts/:id/resolve", contractHandler.ResolveDispute)
 		}
 
 		// public promotion route — secret word acts as the auth mechanism

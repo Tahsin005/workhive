@@ -63,13 +63,13 @@ export default function PublicProfilePage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-8">
+    <div className="max-w-5xl mx-auto space-y-8 pt-25 px-4 md:px-8">
       <Card className="overflow-hidden border-none shadow-lg bg-white">
-        <div className="h-32 bg-gradient-to-r from-indigo-500 to-purple-600"></div>
+        <div className="h-32 bg-primary/70"></div>
         <CardContent className="relative pt-0 px-6 pb-6">
           <div className="flex flex-col md:flex-row md:items-end gap-6 -mt-12">
             <Avatar className="h-32 w-32 border-4 border-white shadow-xl">
-              <AvatarImage src={user.avatar_url || ""} alt={user.full_name} />
+              <AvatarImage src={user.avatar_url || undefined} alt={user.full_name} />
               <AvatarFallback className="text-4xl bg-gray-100 text-primary">
                 {user.full_name.charAt(0).toUpperCase()}
               </AvatarFallback>

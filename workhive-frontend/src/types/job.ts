@@ -15,6 +15,14 @@ export interface Job {
   client: UserBrief
 }
 
+export interface JobBrief {
+  id: string
+  title: string
+  status: string
+  category?: string
+  description?: string
+}
+
 export interface CreateJobRequest {
   title: string
   description: string

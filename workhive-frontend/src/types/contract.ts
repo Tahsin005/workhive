@@ -1,5 +1,5 @@
-import { UserBrief } from './auth'
-import { JobBrief } from './job'
+import type { UserBrief } from './auth'
+import type { JobBrief, Job } from './job'
 
 export interface BidBrief {
   id: string
@@ -10,12 +10,12 @@ export interface BidBrief {
 export interface Contract {
   id: string
   amount: number
-  status: 'active' | 'completed' | 'cancelled'
+  status: 'active' | 'completed' | 'cancelled' | 'disputed'
   started_at: string
   completed_at?: string
   created_at: string
   updated_at: string
-  job?: JobBrief
+  job?: JobBrief | Job
   bid?: BidBrief
   client?: UserBrief
   freelancer?: UserBrief

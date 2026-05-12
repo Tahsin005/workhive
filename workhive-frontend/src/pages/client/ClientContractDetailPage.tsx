@@ -20,7 +20,8 @@ import {
 import { 
   useGetContractQuery, 
   useCancelContractMutation, 
-  useCompleteContractMutation 
+  useCompleteContractMutation,
+  useDisputeContractMutation
 } from "@/store/api/contractsApi"
 import { useGetPaymentByContractQuery } from "@/store/api/paymentsApi"
 import { Button } from "@/components/ui/button"
@@ -49,6 +50,7 @@ export default function ClientContractDetailPage() {
   const { data: paymentResponse, isLoading: isLoadingPayment } = useGetPaymentByContractQuery(id!)
   const [cancelContract, { isLoading: isCancelling }] = useCancelContractMutation()
   const [completeContract, { isLoading: isCompleting }] = useCompleteContractMutation()
+  const [disputeContract, { isLoading: isDisputing }] = useDisputeContractMutation()
 
   const contract = response?.data
   const payments = paymentResponse?.data
@@ -62,6 +64,17 @@ export default function ClientContractDetailPage() {
       toast.success("Contract cancelled successfully")
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to cancel contract")
+    }
+  }
+
+  const handleDispute = async () => {
+    if (!window.confirm("Are you sure you want to raise a dispute? An admin will review the case and resolve it.")) return
+    
+    try {
+      await disputeContract(id!).unwrap()
+      toast.success("Dispute raised successfully. An admin will contact you soon.")
+    } catch (err: any) {
+      toast.error(err.data?.message || "Failed to raise dispute")
     }
   }
 
@@ -98,6 +111,8 @@ export default function ClientContractDetailPage() {
         return <Badge className="bg-green-500 hover:bg-green-600"><CheckCircle2 className="mr-1 h-3 w-3" /> Completed</Badge>
       case 'cancelled':
         return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3" /> Cancelled</Badge>
+      case 'disputed':
+        return <Badge className="bg-red-600"><AlertCircle className="mr-1 h-3 w-3" /> Disputed</Badge>
       default:
         return <Badge variant="outline">{status}</Badge>
     }
@@ -215,6 +230,23 @@ export default function ClientContractDetailPage() {
             </Card>
           )}
 
+          {contract.status === 'disputed' && (
+            <Card className="border-red-200 bg-red-50/30">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-red-700">
+                  <AlertCircle className="h-5 w-5" />
+                  Contract in Dispute
+                </CardTitle>
+                <CardDescription className="text-red-600">
+                  This project has been flagged for dispute. An admin is currently reviewing the case and will mediate between both parties.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <ChatBox contractId={id!} />
+              </CardContent>
+            </Card>
+          )}
+
           {contract.status === 'completed' && (
             <div className="space-y-4">
               <Alert className="bg-green-50 border-green-200">
@@ -317,6 +349,15 @@ export default function ClientContractDetailPage() {
                   >
                     {isCancelling ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <XCircle className="mr-2 h-4 w-4" />}
                     Cancel Contract
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    className="w-full text-red-600 border-red-200 hover:bg-red-50"
+                    onClick={handleDispute}
+                    disabled={isDisputing}
+                  >
+                    {isDisputing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <AlertCircle className="mr-2 h-4 w-4" />}
+                    Raise Dispute
                   </Button>
                 </>
               )}

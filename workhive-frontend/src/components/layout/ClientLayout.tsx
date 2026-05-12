@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Outlet } from 'react-router'
+import { Link, Outlet } from 'react-router'
 import { Menu } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import ClientSidebar from './sidebar/ClientSidebar'
@@ -12,9 +12,8 @@ export default function ClientLayout() {
       <ClientSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden">
-        {/* Mobile Header for hamburger menu */}
         <header className="md:hidden flex items-center justify-between p-4 border-b bg-background">
-          <h1 className="text-xl font-bold text-primary">WorkHive</h1>
+          <Link to="/" className="text-xl font-bold text-primary">WorkHive</Link>
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
             <Menu className="h-5 w-5" />
           </Button>

@@ -107,7 +107,7 @@ export const authApi = createApi({
     }),
     getUserProfile: builder.query<ApiResponse<User>, string>({
       query: (id) => `/users/${id}`,
-      providesTags: (result, error, id) => [{ type: 'User', id }],
+      providesTags: ( _, __, id) => [{ type: 'User', id }],
     }),
     updateProfile: builder.mutation<ApiResponse<User>, { full_name: string; bio?: string }>({
       query: (body) => ({

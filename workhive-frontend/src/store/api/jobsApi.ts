@@ -36,7 +36,7 @@ export const jobsApi = createApi({
     }),
     getJob: builder.query<ApiResponse<Job>, string>({
       query: (id) => `/jobs/${id}`,
-      providesTags: (result, error, id) => [{ type: 'Job', id }],
+      providesTags: (_, __, id) => [{ type: 'Job', id }],
     }),
     createJob: builder.mutation<ApiResponse<Job>, CreateJobRequest>({
       query: (body) => ({
@@ -52,7 +52,7 @@ export const jobsApi = createApi({
         method: 'PUT',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (_, __, { id }) => [
         { type: 'Job', id },
         'MyJobs',
         'Jobs'
@@ -67,7 +67,7 @@ export const jobsApi = createApi({
     }),
     getJobBids: builder.query<ApiResponse<Bid[]>, string>({
       query: (id) => `/jobs/${id}/bids`,
-      providesTags: (result, error, id) => [{ type: 'JobBids', id }],
+      providesTags: (_, __, id) => [{ type: 'JobBids', id }],
     }),
     submitBid: builder.mutation<ApiResponse<Bid>, { id: string; data: SubmitBidRequest }>({
       query: ({ id, data }) => ({
@@ -75,7 +75,7 @@ export const jobsApi = createApi({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: (result, error, { id }) => [
+      invalidatesTags: (_, __, { id }) => [
         { type: 'JobBids', id },
         { type: 'Job', id },
         'Jobs'
@@ -86,7 +86,7 @@ export const jobsApi = createApi({
         url: `/bids/${bidId}/accept`,
         method: 'PUT',
       }),
-      invalidatesTags: (result, error, { jobId }) => [
+      invalidatesTags: (_, __, { jobId }) => [
         { type: 'JobBids', id: jobId },
         { type: 'Job', id: jobId },
         'MyJobs',
@@ -98,7 +98,7 @@ export const jobsApi = createApi({
         url: `/bids/${bidId}/reject`,
         method: 'PUT',
       }),
-      invalidatesTags: (result, error, { jobId }) => [
+      invalidatesTags: (_, __, { jobId }) => [
         { type: 'JobBids', id: jobId }
       ],
     }),

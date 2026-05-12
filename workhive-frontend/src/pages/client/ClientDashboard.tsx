@@ -47,7 +47,7 @@ export default function ClientDashboard() {
             Manage your job posts and track project progress.
           </p>
         </div>
-        <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-all gap-2 bg-indigo-600 hover:bg-indigo-700">
+        <Button asChild size="lg" className="shadow-lg hover:shadow-xl transition-all gap-2 bg-primary hover:bg-primary/90">
           <Link to="/client/jobs/post">
             <PlusCircle className="h-5 w-5" />
             Post a New Job

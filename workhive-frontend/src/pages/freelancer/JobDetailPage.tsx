@@ -4,10 +4,11 @@ import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2, DollarSign, Clock, Send, AlertCircle } from "lucide-react"
+import { ArrowLeft, Loader2, DollarSign, Clock, Send, AlertCircle, LogIn, ShieldCheck } from "lucide-react"
 
 import { useGetJobQuery, useSubmitBidMutation } from "@/store/api/jobsApi"
 import { useGetMyBidsQuery } from "@/store/api/bidsApi"
+import { useAuth } from "@/hooks/useAuth"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -19,15 +20,17 @@ import {
   CardTitle,
   CardDescription
 } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
 import { Field, FieldLabel, FieldError, FieldGroup } from "@/components/ui/field"
 import { submitBidSchema, type SubmitBidFormValues } from "@/schemas/jobSchemas"
 
 export default function FreelancerJobDetailPage() {
   const { id } = useParams()
   const navigate = useNavigate()
+  const { isAuthenticated, user } = useAuth()
   
   const { data: jobData, isLoading: isLoadingJob, isError } = useGetJobQuery(id!)
-  const { data: bidsData, isLoading: isLoadingBids } = useGetMyBidsQuery({ job_id: id })
+  const { data: bidsData, isLoading: isLoadingBids } = useGetMyBidsQuery({ job_id: id }, { skip: !isAuthenticated })
   const [submitBid, { isLoading: isSubmitting }] = useSubmitBidMutation()
 
   const {
@@ -57,7 +60,7 @@ export default function FreelancerJobDetailPage() {
   }, [previousBid, activeBid, reset])
 
   const existingBid = activeBid || previousBid
-  const showBiddingForm = job?.status === 'open' && !activeBid
+  const showBiddingForm = isAuthenticated && user?.role === 'freelancer' && job?.status === 'open' && !activeBid
 
   if (isLoadingJob) {
     return (
@@ -72,7 +75,7 @@ export default function FreelancerJobDetailPage() {
       <div className="flex h-[400px] flex-col items-center justify-center space-y-4">
         <p className="text-destructive">Failed to load job details. The job might have been deleted.</p>
         <Button asChild variant="outline">
-          <Link to="/freelancer/jobs">Return to Jobs</Link>
+          <Link to="/jobs">Return to Jobs</Link>
         </Button>
       </div>
     )
@@ -99,17 +102,17 @@ export default function FreelancerJobDetailPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" asChild>
-          <Link to="/freelancer/jobs">
+        <Button variant="ghost" size="icon" asChild className="rounded-full">
+          <Link to="/jobs">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
         <div>
           <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">{job.title}</h1>
           <div className="flex items-center gap-3 text-sm text-muted-foreground mt-1">
-            <Badge variant="secondary" className="font-normal">{job.category}</Badge>
+            <Badge variant="secondary" className="bg-primary/5 text-primary hover:bg-primary/10 border-none font-bold">{job.category}</Badge>
             <span className="flex items-center">
               <Clock className="h-3.5 w-3.5 mr-1" />
               Posted {format(new Date(job.created_at), 'MMM d, yyyy')}
@@ -118,61 +121,56 @@ export default function FreelancerJobDetailPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-start">
-        <div className="md:col-span-2 space-y-6">
-          <Card className="border shadow-sm">
-            <CardHeader className="bg-gray-50/50 border-b">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 items-start">
+        <div className="md:col-span-2 space-y-8">
+          <Card className="border-none shadow-sm ring-1 ring-gray-200">
+            <CardHeader className="pb-4">
               <CardTitle className="text-xl">Job Description</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
-              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed">
+            <CardContent>
+              <p className="text-gray-700 whitespace-pre-wrap leading-relaxed text-lg">
                 {job.description}
               </p>
             </CardContent>
           </Card>
 
           {showBiddingForm && (
-            <Card className="border shadow-sm border-indigo-100" id="proposal-form">
-              {previousBid && !activeBid && (
-                <div className="bg-amber-50 border-b border-amber-100 px-6 py-2 flex items-center gap-2 text-xs text-amber-800">
-                  <AlertCircle className="h-3 w-3" />
-                  <span>You previously submitted a proposal that was {previousBid.status}. You can submit a new one below.</span>
-                </div>
-              )}
-              <CardHeader className="bg-indigo-50/50 border-b border-indigo-100">
-                <CardTitle className="text-xl flex items-center gap-2 text-indigo-900">
-                  <Send className="h-5 w-5 text-indigo-600" />
+            <Card className="border-none shadow-sm ring-1 ring-gray-200 bg-primary/5" id="proposal-form">
+              <CardHeader>
+                <CardTitle className="text-xl flex items-center gap-2">
+                  <Send className="h-5 w-5 text-primary" />
                   Submit a Proposal
                 </CardTitle>
                 <CardDescription>
                   Propose your terms for this job. Make sure your cover letter stands out!
                 </CardDescription>
               </CardHeader>
-              <CardContent className="pt-6">
+              <CardContent className="space-y-6">
                 <form onSubmit={handleSubmit(onSubmitBid)} className="space-y-6">
-                  <FieldGroup>
+                  <div className="grid gap-6">
                     <Controller
                       name="amount"
                       control={control}
                       render={({ field, fieldState }) => (
-                        <Field data-invalid={fieldState.invalid}>
-                          <FieldLabel htmlFor="bid-amount" className="flex items-center gap-2">
-                            <DollarSign className="h-4 w-4 text-gray-500" />
+                        <div className="space-y-2">
+                          <label htmlFor="bid-amount" className="text-sm font-bold flex items-center gap-2">
+                            <DollarSign className="h-4 w-4 text-primary" />
                             Bid Amount ($)
-                          </FieldLabel>
+                          </label>
                           <Input 
                             {...field} 
                             id="bid-amount" 
                             type="number"
                             min="5"
+                            className="h-11 border-gray-200"
                             placeholder={`e.g. ${(job.budget_min + job.budget_max) / 2}`} 
                             disabled={isSubmitting}
                           />
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground">
                             Client budget: ${job.budget_min} - ${job.budget_max}
                           </p>
-                          {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                        </Field>
+                          {fieldState.invalid && <p className="text-xs text-destructive mt-1">{fieldState.error?.message}</p>}
+                        </div>
                       )}
                     />
 
@@ -180,22 +178,22 @@ export default function FreelancerJobDetailPage() {
                       name="cover_letter"
                       control={control}
                       render={({ field, fieldState }) => (
-                        <Field data-invalid={fieldState.invalid}>
-                          <FieldLabel htmlFor="bid-cover">Cover Letter</FieldLabel>
+                        <div className="space-y-2">
+                          <label htmlFor="bid-cover" className="text-sm font-bold">Cover Letter</label>
                           <Textarea 
                             {...field} 
                             id="bid-cover"
-                            className="min-h-[200px]"
-                            placeholder="Introduce yourself, explain why you are a great fit for this job, and detail your approach..."
+                            className="min-h-[200px] border-gray-200"
+                            placeholder="Introduce yourself and explain why you're a great fit..."
                             disabled={isSubmitting}
                           />
-                          {fieldState.invalid && <FieldError errors={[fieldState.error]} />}
-                        </Field>
+                          {fieldState.invalid && <p className="text-xs text-destructive mt-1">{fieldState.error?.message}</p>}
+                        </div>
                       )}
                     />
-                  </FieldGroup>
+                  </div>
 
-                  <Button type="submit" disabled={isSubmitting} className="w-full md:w-auto">
+                  <Button type="submit" disabled={isSubmitting} size="lg" className="w-full md:w-auto font-bold shadow-lg shadow-primary/20">
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -211,86 +209,72 @@ export default function FreelancerJobDetailPage() {
           )}
 
           {activeBid && (
-            <Card className="border-indigo-100 bg-indigo-50/30">
+            <Card className="border-none shadow-sm ring-1 ring-gray-200 bg-indigo-50/30">
               <CardHeader>
-                <CardTitle className="text-lg flex items-center gap-2 text-indigo-900">
-                  <Badge variant={activeBid.status === 'pending' ? 'secondary' : activeBid.status === 'accepted' ? 'default' : 'destructive'} className="h-2 w-2 rounded-full p-0 mr-1" />
-                  Your Proposal Status: <span className="capitalize">{activeBid.status}</span>
-                </CardTitle>
-                <CardDescription>You have already submitted a proposal for this job.</CardDescription>
+                <div className="flex items-center justify-between gap-4">
+                  <CardTitle className="text-xl">Your Proposal</CardTitle>
+                  <Badge className="capitalize font-bold px-3">{activeBid.status}</Badge>
+                </div>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="p-4 bg-white rounded-lg border border-indigo-100 shadow-sm">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Your Proposed Rate</p>
-                    <p className="text-2xl font-bold text-indigo-600">${activeBid.amount}</p>
+              <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                    <p className="text-xs text-muted-foreground font-black uppercase tracking-widest mb-1">Proposed Rate</p>
+                    <p className="text-2xl font-black text-indigo-600">${activeBid.amount}</p>
                   </div>
-                  <div className="p-4 bg-white rounded-lg border border-indigo-100 shadow-sm">
-                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Submitted On</p>
-                    <p className="text-lg font-semibold">{format(new Date(activeBid.created_at), 'MMM d, yyyy')}</p>
+                  <div className="p-4 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                    <p className="text-xs text-muted-foreground font-black uppercase tracking-widest mb-1">Submitted On</p>
+                    <p className="text-lg font-bold">{format(new Date(activeBid.created_at), 'MMM d, yyyy')}</p>
                   </div>
                 </div>
-                <div className="p-4 bg-white rounded-lg border border-indigo-100 shadow-sm">
-                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-2">Your Pitch</p>
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{activeBid.cover_letter}</p>
+                <div className="p-4 bg-white rounded-xl border border-indigo-100 shadow-sm">
+                  <p className="text-xs text-muted-foreground font-black uppercase tracking-widest mb-2">Your Pitch</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed italic">"{activeBid.cover_letter}"</p>
                 </div>
-                <div className="flex gap-3">
-                  <Button variant="outline" className="flex-1" asChild>
-                    <Link to="/freelancer/bids/my">
-                      Manage All Proposals
-                    </Link>
-                  </Button>
-                  <Button variant="outline" className="flex-1 text-destructive hover:bg-destructive/10" disabled>
-                    Withdraw Proposal
+                <div className="flex gap-4">
+                  <Button variant="outline" className="flex-1 rounded-xl font-bold" asChild>
+                    <Link to="/freelancer/bids/my">Manage Proposals</Link>
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {job.status !== 'open' && (
-            <Card className="border border-amber-200 bg-amber-50">
-              <CardContent className="p-6 text-center text-amber-800">
-                <h3 className="font-semibold text-lg mb-1">Job is not open for bidding</h3>
-                <p>This job is currently marked as "{job.status.replace('_', ' ')}". You cannot submit a proposal at this time.</p>
               </CardContent>
             </Card>
           )}
         </div>
 
-        <div className="space-y-6">
-          <Card className="shadow-sm">
-            <CardHeader className="bg-gray-50/50 border-b pb-4">
-              <CardTitle className="text-lg">About the Client</CardTitle>
+        <div className="space-y-8">
+          <Card className="border-none shadow-sm ring-1 ring-gray-200">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold">About Client</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-4">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+            <CardContent>
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center text-primary font-black text-lg">
                   {job.client?.full_name.charAt(0).toUpperCase()}
                 </div>
-                <div>
-                  <p className="font-semibold">{job.client?.full_name}</p>
-                  <p className="text-sm text-muted-foreground">Client</p>
+                <div className="space-y-0.5">
+                  <p className="font-bold text-gray-900">{job.client?.full_name}</p>
+                  <div className="flex items-center text-xs text-green-600 font-bold">
+                    <ShieldCheck className="h-3 w-3 mr-1" />
+                    Verified Client
+                  </div>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Card className="shadow-sm">
-            <CardHeader className="bg-gray-50/50 border-b pb-4">
-              <CardTitle className="text-lg">Job Details</CardTitle>
+          <Card className="border-none shadow-sm ring-1 ring-gray-200">
+            <CardHeader className="pb-4">
+              <CardTitle className="text-lg font-bold">Details</CardTitle>
             </CardHeader>
-            <CardContent className="pt-4 space-y-4">
-              <div>
-                <p className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Client Budget
-                </p>
-                <p className="font-semibold mt-1">${job.budget_min} - ${job.budget_max}</p>
+            <CardContent className="space-y-4">
+              <div className="space-y-1">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Budget</p>
+                <p className="text-xl font-black">${job.budget_min} - ${job.budget_max}</p>
               </div>
-              <div>
-                <p className="text-sm font-medium text-muted-foreground">Status</p>
-                <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="capitalize mt-1">
+              <Separator />
+              <div className="space-y-1">
+                <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">Status</p>
+                <Badge variant={job.status === 'open' ? 'default' : 'secondary'} className="capitalize px-3 font-bold">
                   {job.status.replace('_', ' ')}
                 </Badge>
               </div>
