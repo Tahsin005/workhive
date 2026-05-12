@@ -7,6 +7,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/Tahsin005/workhive-backend/internal/config"
+	"github.com/Tahsin005/workhive-backend/internal/cron"
 	"github.com/Tahsin005/workhive-backend/internal/routes"
 	"github.com/Tahsin005/workhive-backend/internal/websocket"
 )
@@ -17,6 +18,7 @@ func main() {
 
 	hub := websocket.NewHub()
 	go hub.Run()
+	cron.InitCron(cfg)
 
 	r := gin.Default()
 
