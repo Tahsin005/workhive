@@ -49,7 +49,8 @@ func (h *PaymentHandler) CreateIntent(c *gin.Context) {
 		case "contract is not active", "a pending or paid payment already exists for this contract":
 			utils.BadRequest(c, err.Error(), nil)
 		default:
-			utils.InternalError(c, "Failed to create payment intent")
+			log.Printf("[PaymentHandler] Failed to create payment intent: %v\n", err)
+			utils.InternalError(c, "Failed to create payment intent: "+err.Error())
 		}
 		return
 	}

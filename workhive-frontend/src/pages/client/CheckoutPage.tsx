@@ -52,7 +52,6 @@ export default function CheckoutPage() {
           } else {
             setError(message)
           }
-          intentInitiated.current = false;
         })
     } 
   }, [contract, existingPayment, createIntent, isCreatingIntent, isLoadingPayment])
