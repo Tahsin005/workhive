@@ -87,13 +87,25 @@ func (s *paymentService) CreateIntent(userID uuid.UUID, input models.CreatePayme
 
 		// Reuse existing pending payment if it has Stripe data
 		if pendingPayment != nil && pendingPayment.StripePaymentID != nil && pendingPayment.ClientSecret != nil {
-			response = &dto.PaymentIntentResponse{
-				ClientSecret: *pendingPayment.ClientSecret,
-				PaymentID:    pendingPayment.ID,
-				Amount:       pendingPayment.Amount,
-				Currency:     "usd",
+			// Verify actual status with Stripe to avoid "Terminal State" errors on frontend
+			intent, err := paymentintent.Get(*pendingPayment.StripePaymentID, nil)
+			if err == nil {
+				if intent.Status == stripe.PaymentIntentStatusSucceeded {
+					return errors.New("this contract has already been paid")
+				}
+				if intent.Status == stripe.PaymentIntentStatusCanceled {
+					// If canceled, we should ignore this record and create a new one
+					pendingPayment = nil
+				} else {
+					response = &dto.PaymentIntentResponse{
+						ClientSecret: *pendingPayment.ClientSecret,
+						PaymentID:    pendingPayment.ID,
+						Amount:       pendingPayment.Amount,
+						Currency:     "usd",
+					}
+					return nil
+				}
 			}
-			return nil
 		}
 
 		// Create a new Stripe Payment Intent with an idempotency key

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import { useParams, Link, useNavigate } from "react-router"
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements } from "@stripe/react-stripe-js"
+import { toast } from "sonner"
 import { ArrowLeft, Loader2, CreditCard, ShieldCheck } from "lucide-react"
 
 import { useGetContractQuery } from "@/store/api/contractsApi"
@@ -44,7 +45,13 @@ export default function CheckoutPage() {
           setClientSecret(res.data.client_secret)
         })
         .catch((err) => {
-          setError(err.data?.message || "Failed to initialize payment")
+          const message = err.data?.message || "Failed to initialize payment"
+          if (message.includes("already been paid")) {
+            toast.success("Payment confirmed!")
+            navigate(`/client/contracts/${contract.id}`)
+          } else {
+            setError(message)
+          }
           intentInitiated.current = false;
         })
     } 
