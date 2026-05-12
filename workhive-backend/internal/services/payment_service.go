@@ -14,12 +14,14 @@ import (
 	"github.com/stripe/stripe-go/v81"
 	"github.com/stripe/stripe-go/v81/paymentintent"
 	"github.com/stripe/stripe-go/v81/webhook"
+	"gorm.io/gorm"
 )
 
 type PaymentService interface {
 	CreateIntent(userID uuid.UUID, input models.CreatePaymentIntentInput) (*dto.PaymentIntentResponse, error)
 	HandleWebhook(rawBody []byte, signature string) error
 	GetByContractID(userID uuid.UUID, contractID uuid.UUID) ([]models.Payment, error)
+	ListMyPayments(userID uuid.UUID, page, limit int) ([]models.Payment, int64, error)
 }
 
 type paymentService struct {
@@ -27,15 +29,17 @@ type paymentService struct {
 	contractRepo repository.ContractRepository
 	jobRepo      repository.JobRepository
 	cfg          *config.Config
+	db           *gorm.DB
 }
 
-func NewPaymentService(paymentRepo repository.PaymentRepository, contractRepo repository.ContractRepository, jobRepo repository.JobRepository, cfg *config.Config) PaymentService {
+func NewPaymentService(paymentRepo repository.PaymentRepository, contractRepo repository.ContractRepository, jobRepo repository.JobRepository, cfg *config.Config, db *gorm.DB) PaymentService {
 	stripe.Key = cfg.StripeSecret
 	return &paymentService{
 		paymentRepo:  paymentRepo,
 		contractRepo: contractRepo,
 		jobRepo:      jobRepo,
 		cfg:          cfg,
+		db:           db,
 	}
 }
 
@@ -45,80 +49,103 @@ func (s *paymentService) CreateIntent(userID uuid.UUID, input models.CreatePayme
 		return nil, errors.New("invalid contract ID")
 	}
 
-	contract, err := s.contractRepo.GetByID(contractID.String())
-	if err != nil {
-		return nil, errors.New("contract not found")
-	}
+	var response *dto.PaymentIntentResponse
+	err = s.db.Transaction(func(tx *gorm.DB) error {
+		// Use transaction-aware repositories
+		txContractRepo := s.contractRepo
+		txPaymentRepo := s.paymentRepo.WithTx(tx)
 
-	if contract.ClientID != userID {
-		return nil, errors.New("unauthorized")
-	}
-
-	if contract.Status != models.ContractStatusActive {
-		return nil, errors.New("contract is not active")
-	}
-
-	payments, err := s.paymentRepo.FindByContractID(contractID)
-	if err != nil {
-		return nil, err
-	}
-
-	var pendingPayment *models.Payment
-	for _, p := range payments {
-		if p.Status == models.PaymentStatusPaid {
-			return nil, errors.New("this contract has already been paid")
+		// Lock the contract record to prevent concurrent intent creation
+		contract, err := txContractRepo.GetByIDForUpdate(tx, contractID.String())
+		if err != nil {
+			return errors.New("contract not found")
 		}
-		if p.Status == models.PaymentStatusPending {
-			pendingPayment = &p
-		}
-	}
 
-	if pendingPayment != nil && pendingPayment.StripePaymentID != nil && pendingPayment.ClientSecret != nil {
-		return &dto.PaymentIntentResponse{
-			ClientSecret: *pendingPayment.ClientSecret,
-			PaymentID:    pendingPayment.ID,
-			Amount:       pendingPayment.Amount,
+		if contract.ClientID != userID {
+			return errors.New("unauthorized")
+		}
+
+		if contract.Status != models.ContractStatusActive {
+			return errors.New("contract is not active")
+		}
+
+		// Check for existing payments within the same transaction
+		payments, err := txPaymentRepo.FindByContractID(contractID)
+		if err != nil {
+			return err
+		}
+
+		var pendingPayment *models.Payment
+		for _, p := range payments {
+			if p.Status == models.PaymentStatusPaid {
+				return errors.New("this contract has already been paid")
+			}
+			if p.Status == models.PaymentStatusPending {
+				pendingPayment = &p
+			}
+		}
+
+		// Reuse existing pending payment if it has Stripe data
+		if pendingPayment != nil && pendingPayment.StripePaymentID != nil && pendingPayment.ClientSecret != nil {
+			response = &dto.PaymentIntentResponse{
+				ClientSecret: *pendingPayment.ClientSecret,
+				PaymentID:    pendingPayment.ID,
+				Amount:       pendingPayment.Amount,
+				Currency:     "usd",
+			}
+			return nil
+		}
+
+		// Create a new Stripe Payment Intent with an idempotency key
+		idempotencyKey := "pi_" + contract.ID.String()
+		params := &stripe.PaymentIntentParams{
+			Params: stripe.Params{
+				IdempotencyKey: stripe.String(idempotencyKey),
+			},
+			Amount:   stripe.Int64(int64(contract.Amount * 100)),
+			Currency: stripe.String(string(stripe.CurrencyUSD)),
+			AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
+				Enabled:        stripe.Bool(true),
+				AllowRedirects: stripe.String("never"),
+			},
+			Metadata: map[string]string{
+				"contract_id": contract.ID.String(),
+				"payer_id":    userID.String(),
+			},
+		}
+
+		intent, err := paymentintent.New(params)
+		if err != nil {
+			return err
+		}
+
+		payment := &models.Payment{
+			ContractID:      contract.ID,
+			PayerID:         userID,
+			Amount:          contract.Amount,
+			StripePaymentID: &intent.ID,
+			ClientSecret:    &intent.ClientSecret,
+			Status:          models.PaymentStatusPending,
+		}
+
+		if err := txPaymentRepo.Create(payment); err != nil {
+			return err
+		}
+
+		response = &dto.PaymentIntentResponse{
+			ClientSecret: intent.ClientSecret,
+			PaymentID:    payment.ID,
+			Amount:       contract.Amount,
 			Currency:     "usd",
-		}, nil
-	}
+		}
+		return nil
+	})
 
-	params := &stripe.PaymentIntentParams{
-		Amount:   stripe.Int64(int64(contract.Amount * 100)),
-		Currency: stripe.String(string(stripe.CurrencyUSD)),
-		AutomaticPaymentMethods: &stripe.PaymentIntentAutomaticPaymentMethodsParams{
-			Enabled:        stripe.Bool(true),
-			AllowRedirects: stripe.String("never"),
-		},
-		Metadata: map[string]string{
-			"contract_id": contract.ID.String(),
-			"payer_id":    userID.String(),
-		},
-	}
-
-	intent, err := paymentintent.New(params)
 	if err != nil {
 		return nil, err
 	}
 
-	payment := &models.Payment{
-		ContractID:      contract.ID,
-		PayerID:         userID,
-		Amount:          contract.Amount,
-		StripePaymentID: &intent.ID,
-		ClientSecret:    &intent.ClientSecret,
-		Status:          models.PaymentStatusPending,
-	}
-
-	if err := s.paymentRepo.Create(payment); err != nil {
-		return nil, err
-	}
-
-	return &dto.PaymentIntentResponse{
-		ClientSecret: intent.ClientSecret,
-		PaymentID:    payment.ID,
-		Amount:       contract.Amount,
-		Currency:     "usd",
-	}, nil
+	return response, nil
 }
 
 func (s *paymentService) HandleWebhook(rawBody []byte, signature string) error {
@@ -203,4 +230,19 @@ func (s *paymentService) GetByContractID(userID uuid.UUID, contractID uuid.UUID)
 	}
 
 	return s.paymentRepo.FindByContractID(contractID)
+}
+
+func (s *paymentService) ListMyPayments(userID uuid.UUID, page, limit int) ([]models.Payment, int64, error) {
+	offset := (page - 1) * limit
+	payments, err := s.paymentRepo.FindByUserID(userID, offset, limit)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	total, err := s.paymentRepo.CountByUserID(userID)
+	if err != nil {
+		return nil, 0, err
+	}
+
+	return payments, total, nil
 }

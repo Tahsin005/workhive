@@ -1,5 +1,6 @@
 import { Button } from "./ui/button"
-import { Hexagon, LogOut } from "lucide-react"
+import { Hexagon, LogOut, MessageSquare } from "lucide-react"
+import { useGetUnreadCountQuery } from "../store/api/messagesApi"
 import { useAuth } from "../hooks/useAuth"
 import { useDispatch } from "react-redux"
 import { clearAuth } from "../store/slices/authSlice"
@@ -16,6 +17,12 @@ const Navbar = () => {
   const { user, isAuthenticated } = useAuth()
   const dispatch = useDispatch()
   const navigate = useNavigate()
+
+  const { data: unreadData } = useGetUnreadCountQuery(undefined, {
+    skip: !isAuthenticated,
+    pollingInterval: 30000,
+  })
+  const unreadCount = unreadData?.data?.total || 0
 
   const handleLogout = () => {
     dispatch(clearAuth())
@@ -70,6 +77,17 @@ const Navbar = () => {
                   {user.role}
                 </Badge>
               </div>
+              <Link to={user.role === 'client' ? '/client/contracts' : '/freelancer/contracts'} className="relative group">
+                <Button variant="ghost" size="icon" className="rounded-full">
+                  <MessageSquare className="h-5 w-5" />
+                  {unreadCount > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-5 min-w-[20px] px-1 flex items-center justify-center bg-destructive text-white border-2 border-white text-[10px] animate-in zoom-in">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </Badge>
+                  )}
+                </Button>
+              </Link>
+
               <Avatar className="h-9 w-9 border-2 border-primary/20">
                 {user.avatar_url ? (
                   <AvatarImage src={user.avatar_url || ''} alt={user.full_name} />

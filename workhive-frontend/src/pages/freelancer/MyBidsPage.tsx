@@ -45,7 +45,8 @@ export default function MyBidsPage() {
   const [editingBidId, setEditingBidId] = useState<string | null>(null)
 
   const bids = data?.data || []
-  const meta = data?.meta
+  const pagination = (data as any)?.pagination
+  const totalPages = pagination ? Math.ceil(pagination.total / (pagination.limit || limit)) : 1
 
   const handleWithdraw = async (id: string) => {
     if (window.confirm("Are you sure you want to withdraw this proposal? You can still submit a new proposal later if the job is still open.")) {
@@ -190,7 +191,7 @@ export default function MyBidsPage() {
             ))}
           </div>
 
-          {meta && meta.total_pages > 1 && (
+          {pagination && totalPages > 1 && (
             <Pagination className="mt-8 justify-end">
               <PaginationContent>
                 <PaginationItem>
@@ -200,12 +201,12 @@ export default function MyBidsPage() {
                   />
                 </PaginationItem>
                 <span className="flex items-center text-sm text-muted-foreground px-4">
-                  Page {page} of {meta.total_pages}
+                  Page {page} of {totalPages}
                 </span>
                 <PaginationItem>
                   <PaginationNext 
-                    onClick={() => setPage(p => Math.min(meta.total_pages, p + 1))}
-                    className={page === meta.total_pages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                   />
                 </PaginationItem>
               </PaginationContent>

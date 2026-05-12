@@ -27,7 +27,7 @@ export default function FreelancerJobDetailPage() {
   const navigate = useNavigate()
   
   const { data: jobData, isLoading: isLoadingJob, isError } = useGetJobQuery(id!)
-  const { data: bidsData, isLoading: isLoadingBids } = useGetMyBidsQuery({ limit: 100 })
+  const { data: bidsData, isLoading: isLoadingBids } = useGetMyBidsQuery({ job_id: id })
   const [submitBid, { isLoading: isSubmitting }] = useSubmitBidMutation()
 
   const {

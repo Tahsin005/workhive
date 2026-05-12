@@ -3,7 +3,7 @@ import type { Bid, SubmitBidRequest } from '@/types/bid'
 import type { ApiResponse } from '@/types/auth'
 import type { RootState } from '../index'
 
-// We need a paginated wrapper for bids
+
 export interface PaginatedBids {
   data: Bid[]
   meta: {
@@ -30,7 +30,7 @@ export const bidsApi = createApi({
   baseQuery,
   tagTypes: ['Bids', 'Bid'],
   endpoints: (builder) => ({
-    getMyBids: builder.query<PaginatedBids, { page?: number; limit?: number }>({
+    getMyBids: builder.query<PaginatedBids, { page?: number; limit?: number; job_id?: string; status?: string }>({
       query: (params) => ({
         url: '/bids/my',
         params,

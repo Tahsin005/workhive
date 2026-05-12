@@ -17,11 +17,15 @@ const baseQuery = fetchBaseQuery({
 export const messagesApi = createApi({
   reducerPath: 'messagesApi',
   baseQuery,
-  tagTypes: ['Messages'],
+  tagTypes: ['Messages', 'UnreadCount'],
   endpoints: (builder) => ({
     getHistory: builder.query<ApiResponse<Message[]>, string>({
       query: (contractId) => `/messages/${contractId}`,
       providesTags: (result, error, contractId) => [{ type: 'Messages', id: contractId }],
+    }),
+    getUnreadCount: builder.query<ApiResponse<{ total: number }>, void>({
+      query: () => '/messages/unread',
+      providesTags: ['UnreadCount'],
     }),
     sendMessage: builder.mutation<ApiResponse<Message>, { contractId: string; body: SendMessageRequest }>({
       query: ({ contractId, body }) => ({
@@ -29,16 +33,23 @@ export const messagesApi = createApi({
         method: 'POST',
         body,
       }),
-      // We don't necessarily need to invalidate if using WebSockets for real-time updates
     }),
     markAsRead: builder.mutation<ApiResponse<{ updated: number }>, string>({
       query: (contractId) => ({
         url: `/messages/${contractId}/read`,
         method: 'PUT',
       }),
-      invalidatesTags: (result, error, contractId) => [{ type: 'Messages', id: contractId }],
+      invalidatesTags: (result, error, contractId) => [
+        { type: 'Messages', id: contractId },
+        'UnreadCount'
+      ],
     }),
   }),
 })
 
-export const { useGetHistoryQuery, useSendMessageMutation, useMarkAsReadMutation } = messagesApi
+export const { 
+  useGetHistoryQuery, 
+  useGetUnreadCountQuery,
+  useSendMessageMutation, 
+  useMarkAsReadMutation 
+} = messagesApi

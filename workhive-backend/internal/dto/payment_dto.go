@@ -16,6 +16,12 @@ type PaymentResponse struct {
 	PaidAt          *time.Time           `json:"paid_at,omitempty"`
 	CreatedAt       time.Time            `json:"created_at"`
 	Payer           *UserBrief           `json:"payer,omitempty"`
+	Contract        *PaymentContractBrief `json:"contract,omitempty"`
+}
+
+type PaymentContractBrief struct {
+	ID    uuid.UUID `json:"id"`
+	Title string    `json:"title"`
 }
 
 type PaymentIntentResponse struct {
@@ -41,6 +47,17 @@ func ToPaymentResponse(payment *models.Payment) *PaymentResponse {
 
 	if payment.Payer.ID != uuid.Nil {
 		response.Payer = ToUserBrief(&payment.Payer)
+	}
+
+	if payment.Contract.ID != uuid.Nil {
+		title := ""
+		if payment.Contract.Job.ID != uuid.Nil {
+			title = payment.Contract.Job.Title
+		}
+		response.Contract = &PaymentContractBrief{
+			ID:    payment.Contract.ID,
+			Title: title,
+		}
 	}
 
 	return response

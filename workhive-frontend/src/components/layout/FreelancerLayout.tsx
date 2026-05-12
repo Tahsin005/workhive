@@ -8,7 +8,7 @@ export default function FreelancerLayout() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false)
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
+    <div className="flex fixed inset-0 overflow-hidden bg-background">
       <FreelancerSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden">

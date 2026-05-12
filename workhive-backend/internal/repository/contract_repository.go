@@ -3,16 +3,18 @@ package repository
 import (
 	"github.com/Tahsin005/workhive-backend/internal/models"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 )
 
 type ContractRepository interface {
 	Create(contract *models.Contract) error
 	GetByID(id string) (*models.Contract, error)
+	GetByIDForUpdate(tx *gorm.DB, id string) (*models.Contract, error)
 	List(filter models.ContractFilter) ([]models.Contract, int64, error)
 	Update(contract *models.Contract) error
 	HasActiveContractForJob(jobID string) (bool, error)
 	HasPaidPayment(contractID string) (bool, error)
-	RestoreRejectedBids(jobID string) error
+	RestoreBids(jobID string) error
 }
 
 type contractRepository struct {
@@ -62,6 +64,16 @@ func (r *contractRepository) List(filter models.ContractFilter) ([]models.Contra
 	return contracts, total, err
 }
 
+func (r *contractRepository) GetByIDForUpdate(tx *gorm.DB, id string) (*models.Contract, error) {
+	var contract models.Contract
+	err := tx.Clauses(clause.Locking{Strength: "UPDATE"}).
+		Preload("Job").
+		Preload("Client").
+		Preload("Freelancer").
+		First(&contract, "id = ?", id).Error
+	return &contract, err
+}
+
 func (r *contractRepository) Update(contract *models.Contract) error {
 	return r.db.Save(contract).Error
 }
@@ -80,8 +92,8 @@ func (r *contractRepository) HasPaidPayment(contractID string) (bool, error) {
 	return count > 0, err
 }
 
-// RestoreRejectedBids sets all rejected bids for a job back to pending (used when cancelling a contract).
-func (r *contractRepository) RestoreRejectedBids(jobID string) error {
-	return r.db.Model(&models.Bid{}).Where("job_id = ? AND status = ?", jobID, models.BidStatusRejected).
+// RestoreBids sets all rejected and accepted bids for a job back to pending (used when cancelling a contract).
+func (r *contractRepository) RestoreBids(jobID string) error {
+	return r.db.Model(&models.Bid{}).Where("job_id = ? AND (status = ? OR status = ?)", jobID, models.BidStatusRejected, models.BidStatusAccepted).
 		Update("status", models.BidStatusPending).Error
 }

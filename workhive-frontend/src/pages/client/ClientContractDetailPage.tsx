@@ -51,8 +51,8 @@ export default function ClientContractDetailPage() {
   const [completeContract, { isLoading: isCompleting }] = useCompleteContractMutation()
 
   const contract = response?.data
-  const payment = paymentResponse?.data
-  const isPaid = payment?.status === 'paid'
+  const payments = paymentResponse?.data
+  const isPaid = Array.isArray(payments) ? payments.some(p => p.status === 'paid') : false
 
   const handleCancel = async () => {
     if (!window.confirm("Are you sure you want to cancel this contract? This action will set the job status back to open.")) return

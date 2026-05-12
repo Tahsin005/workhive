@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useParams, Link } from "react-router"
 import { format } from "date-fns"
 import { 
@@ -23,16 +24,20 @@ import {
 } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { Pagination, PaginationContent, PaginationItem, PaginationNext, PaginationPrevious } from "@/components/ui/pagination"
 
 export default function PublicProfilePage() {
   const { id } = useParams()
+  const [page, setPage] = useState(1)
   
   const { data: userData, isLoading: isLoadingUser, isError: isUserError } = useGetUserProfileQuery(id!)
-  const { data: reviewsData, isLoading: isLoadingReviews } = useGetUserReviewsQuery({ userId: id! })
+  const { data: reviewsData, isLoading: isLoadingReviews } = useGetUserReviewsQuery({ userId: id!, page })
 
   const user = userData?.data
   const reviewStats = reviewsData?.data?.stats
   const reviews = reviewsData?.data?.reviews || []
+  const pagination = (reviewsData as any)?.pagination
+  const totalPages = pagination ? Math.ceil(pagination.total / (pagination.limit || 10)) : 1
 
   if (isLoadingUser) {
     return (
@@ -151,8 +156,10 @@ export default function PublicProfilePage() {
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <div>
-                <CardTitle className="text-xl">Client Reviews</CardTitle>
-                <CardDescription>What others say about {user.full_name}</CardDescription>
+                <CardTitle className="text-xl">
+                  {user.role === 'freelancer' ? 'Freelancer Feedback' : 'Client Feedback'}
+                </CardTitle>
+                <CardDescription>What others say about their experience with {user.full_name.split(' ')[0]}</CardDescription>
               </div>
               {reviewStats && (
                 <div className="text-right">
@@ -184,7 +191,9 @@ export default function PublicProfilePage() {
                             <AvatarFallback>{review.reviewer.full_name.charAt(0)}</AvatarFallback>
                           </Avatar>
                           <div>
-                            <p className="font-semibold text-sm">{review.reviewer.full_name}</p>
+                            <Link to={`/profile/${review.reviewer.id}`} className="font-semibold text-sm hover:text-indigo-600 transition-colors">
+                              {review.reviewer.full_name}
+                            </Link>
                             <p className="text-xs text-muted-foreground">{format(new Date(review.created_at), 'MMM d, yyyy')}</p>
                           </div>
                         </div>
@@ -203,6 +212,29 @@ export default function PublicProfilePage() {
                       <Separator className="pt-2" />
                     </div>
                   ))}
+                  {totalPages > 1 && (
+                    <div className="flex justify-center pt-4">
+                      <Pagination>
+                        <PaginationContent>
+                          <PaginationItem>
+                            <PaginationPrevious 
+                              onClick={() => setPage(p => Math.max(1, p - 1))}
+                              className={page === 1 ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                          <span className="flex items-center text-sm text-muted-foreground px-4">
+                            Page {page} of {totalPages}
+                          </span>
+                          <PaginationItem>
+                            <PaginationNext 
+                              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                              className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                            />
+                          </PaginationItem>
+                        </PaginationContent>
+                      </Pagination>
+                    </div>
+                  )}
                 </div>
               )}
             </CardContent>

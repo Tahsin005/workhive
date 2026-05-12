@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { useSelector } from 'react-redux'
 
 import { useMeQuery } from '@/store/api/authApi'
-import { useGetHistoryQuery } from '@/store/api/messagesApi'
+import { useGetHistoryQuery, useMarkAsReadMutation } from '@/store/api/messagesApi'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -27,22 +27,24 @@ export function ChatBox({ contractId }: ChatBoxProps) {
   const currentUser = meData?.data
   
   const { data: historyData, isLoading: isLoadingHistory } = useGetHistoryQuery(contractId)
+  const [markAsRead] = useMarkAsReadMutation()
 
-  // Initialize messages from history
+
   useEffect(() => {
     if (historyData?.data) {
       setMessages(historyData.data)
+      markAsRead(contractId)
     }
   }, [historyData])
 
-  // Scroll to bottom on new messages
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight
     }
   }, [messages])
 
-  // WebSocket Connection
+
   useEffect(() => {
     if (!token || !contractId) return
 
@@ -65,8 +67,8 @@ export function ChatBox({ contractId }: ChatBoxProps) {
       try {
         const newMessage: Message = JSON.parse(event.data)
         setMessages((prev) => {
-          // Prevent duplicates (e.g. if history and WS overlap)
           if (prev.find(m => m.id === newMessage.id)) return prev
+          markAsRead(contractId)
           return [...prev, newMessage]
         })
       } catch (err) {
@@ -92,8 +94,6 @@ export function ChatBox({ contractId }: ChatBoxProps) {
     e.preventDefault()
     if (!inputValue.trim() || !socketRef.current || socketRef.current.readyState !== WebSocket.OPEN) return
 
-    // Sending content as string (backend expects JSON body in ReadPump or raw string depending on implementation)
-    // Looking at backend ReadPump: it expects the client to send a message which is then handled by sendFunc
     socketRef.current.send(inputValue.trim())
     setInputValue('')
   }
@@ -108,8 +108,7 @@ export function ChatBox({ contractId }: ChatBoxProps) {
 
   return (
     <div className="flex flex-col h-[500px] bg-white rounded-lg border shadow-sm overflow-hidden">
-      {/* Chat Header */}
-      <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
+        <div className="p-4 border-b bg-gray-50 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className={`h-2 w-2 rounded-full ${isConnected ? 'bg-green-500' : 'bg-red-500'}`} />
           <span className="text-sm font-medium">{isConnected ? 'Connected' : 'Disconnected'}</span>
@@ -117,7 +116,7 @@ export function ChatBox({ contractId }: ChatBoxProps) {
         <span className="text-xs text-muted-foreground italic">Real-time collaboration</span>
       </div>
 
-      {/* Messages List */}
+
       <div 
         ref={scrollRef}
         className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50/30"
@@ -129,7 +128,7 @@ export function ChatBox({ contractId }: ChatBoxProps) {
           </div>
         ) : (
           messages.map((msg, index) => {
-            const isMe = msg.sender_id === (currentUser?.id || localStorage.getItem('userId')) // Fallback if currentUser not in state
+            const isMe = msg.sender_id === (currentUser?.id || localStorage.getItem('userId'))
             return (
               <div 
                 key={msg.id || index} 
@@ -170,7 +169,7 @@ export function ChatBox({ contractId }: ChatBoxProps) {
         )}
       </div>
 
-      {/* Input Area */}
+
       <form onSubmit={handleSend} className="p-4 border-t bg-white flex gap-2">
         <Input 
           placeholder={isConnected ? "Type your message..." : "Connecting..."}

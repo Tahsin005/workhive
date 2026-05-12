@@ -118,8 +118,8 @@ func (s *contractService) CancelContract(id string, userID uuid.UUID) (*models.C
 		return nil, err
 	}
 
-	// Restore all rejected bids for this job back to pending (optional good UX)
-	_ = s.contractRepo.RestoreRejectedBids(contract.JobID.String())
+	// Restore all rejected/accepted bids for this job back to pending
+	_ = s.contractRepo.RestoreBids(contract.JobID.String())
 
 	return contract, nil
 }

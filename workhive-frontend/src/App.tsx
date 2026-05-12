@@ -3,12 +3,10 @@ import { useDispatch, useSelector } from "react-redux"
 import { useAuth } from "./hooks/useAuth"
 import { setInitialized } from "./store/slices/authSlice"
 
-// Components
 import GlobalLoader from "./components/GlobalLoader"
 import { Toaster } from "./components/ui/sonner"
 import type { RootState } from "./store"
 
-// Layouts & Guards
 import RootLayout from "./components/layout/RootLayout"
 import ClientLayout from "./components/layout/ClientLayout"
 import FreelancerLayout from "./components/layout/FreelancerLayout"
@@ -17,14 +15,12 @@ import ProtectedRoute from "./components/shared/ProtectedRoute"
 import RoleRoute from "./components/shared/RoleRoute"
 import RedirectByRole from "./components/shared/RedirectByRole"
 
-// Public Pages
 import LandingPage from "./pages/public/LandingPage"
 import NotFoundPage from "./pages/public/NotFoundPage"
 import LoginPage from "./pages/LoginPage"
 import RegisterPage from "./pages/RegisterPage"
 import PublicProfilePage from "./pages/shared/PublicProfilePage"
 
-// Client Pages
 import ClientDashboard from "./pages/client/ClientDashboard"
 import PostJobPage from "./pages/client/PostJobPage"
 import MyJobsPage from "./pages/client/MyJobsPage"
@@ -36,7 +32,6 @@ import ClientContractDetailPage from "./pages/client/ClientContractDetailPage"
 import PaymentsPage from "./pages/client/PaymentsPage"
 import CheckoutPage from "./pages/client/CheckoutPage"
 
-// Freelancer Pages
 import FreelancerDashboard from "./pages/freelancer/FreelancerDashboard"
 import BrowseJobsPage from "./pages/freelancer/BrowseJobsPage"
 import FreelancerJobDetailPage from "./pages/freelancer/JobDetailPage"
@@ -44,14 +39,12 @@ import MyBidsPage from "./pages/freelancer/MyBidsPage"
 import FreelancerContractsPage from "./pages/freelancer/FreelancerContractsPage"
 import FreelancerContractDetailPage from "./pages/freelancer/FreelancerContractDetailPage"
 
-// Admin Pages
 import AdminDashboard from "./pages/admin/AdminDashboard"
 import AdminUsersPage from "./pages/admin/AdminUsersPage"
 import AdminUserDetailPage from "./pages/admin/AdminUserDetailPage"
 import AdminJobsPage from "./pages/admin/AdminJobsPage"
 import AdminJobDetailPage from "./pages/admin/AdminJobDetailPage"
 
-// Shared
 import ProfilePage from "./pages/shared/ProfilePage"
 import { Route, Routes } from "react-router"
 
@@ -80,9 +73,8 @@ function App() {
   }
 
   return (
-    <main className="min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <div className="bg-background text-foreground selection:bg-primary/30">
       <Routes>
-        {/* public routes */}
         <Route element={<RootLayout />}>
           <Route path="/" element={<LandingPage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -90,12 +82,12 @@ function App() {
           <Route path="/profile/:id" element={<PublicProfilePage />} />
         </Route>
 
-        {/* protected catch-all */}
+
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<RedirectByRole />} />
         </Route>
 
-        {/* client routes */}
+
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute allowedRoles={['client']} />}>
             <Route element={<ClientLayout />}>
@@ -114,7 +106,7 @@ function App() {
           </Route>
         </Route>
 
-        {/* freelancer routes */}
+
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute allowedRoles={['freelancer']} />}>
             <Route element={<FreelancerLayout />}>
@@ -129,7 +121,7 @@ function App() {
           </Route>
         </Route>
 
-        {/* admin routes */}
+
         <Route element={<ProtectedRoute />}>
           <Route element={<RoleRoute allowedRoles={['admin']} />}>
             <Route element={<AdminLayout />}>
@@ -142,11 +134,11 @@ function App() {
           </Route>
         </Route>
 
-        {/* catch all */}
+
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
       <Toaster position="bottom-right" richColors />
-    </main>
+    </div>
   )
 }
 

@@ -196,9 +196,7 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        {/* Right Column: Forms */}
         <div className="md:col-span-2 space-y-8">
-          {/* Profile Form */}
           <Card className="border-none shadow-sm ring-1 ring-gray-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -247,7 +245,6 @@ export default function ProfilePage() {
             </CardFooter>
           </Card>
 
-          {/* Password Form */}
           <Card className="border-none shadow-sm ring-1 ring-gray-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">

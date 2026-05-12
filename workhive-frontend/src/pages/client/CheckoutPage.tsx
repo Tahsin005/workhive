@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, Link, useNavigate } from "react-router"
 import { loadStripe } from "@stripe/stripe-js"
 import { Elements } from "@stripe/react-stripe-js"
@@ -24,16 +24,19 @@ export default function CheckoutPage() {
   
   const [clientSecret, setClientSecret] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  
+  const intentInitiated = useRef(false)
 
   const contract = contractData?.data
-  const payments = paymentData?.data // This is an array
+  const payments = paymentData?.data
   const existingPayment = Array.isArray(payments) ? payments.find(p => p.status === 'pending' || p.status === 'paid') : null
 
   useEffect(() => {
-    // If contract is active and we don't have a client secret yet, create or retrieve an intent
     if (contract && contract.status === 'active' && !clientSecret && !isCreatingIntent && !isLoadingPayment) {
-      // Don't call if we already found a paid payment in existingPayment
       if (existingPayment && existingPayment.status === 'paid') return;
+      
+      if (intentInitiated.current) return;
+      intentInitiated.current = true;
 
       createIntent({ contract_id: contract.id })
         .unwrap()
@@ -42,14 +45,10 @@ export default function CheckoutPage() {
         })
         .catch((err) => {
           setError(err.data?.message || "Failed to initialize payment")
+          intentInitiated.current = false;
         })
     } 
-    // If a pending payment already exists but we don't have a client secret, 
-    // we might need to handle that. However, the current backend doesn't return 
-    // the client_secret in the payment list, only in the intent creation response.
-    // So we might need a way to re-fetch the secret or just try to create a new one 
-    // (but backend blocks creation if one exists).
-  }, [contract, existingPayment, clientSecret, createIntent, isCreatingIntent, isLoadingPayment])
+  }, [contract, existingPayment, createIntent, isCreatingIntent, isLoadingPayment])
 
   if (isLoadingContract || isLoadingPayment || isCreatingIntent) {
     return (

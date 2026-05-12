@@ -29,10 +29,11 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	jobService := services.NewJobService(jobRepo, bidRepo, contractRepo, cfg.JWTSecret)
 	bidService := services.NewBidService(bidRepo, jobRepo, contractRepo)
 	contractService := services.NewContractService(contractRepo, jobRepo)
-	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg)
+	paymentService := services.NewPaymentService(paymentRepo, contractRepo, jobRepo, cfg, db)
 	messageService := services.NewMessageService(messageRepo, contractRepo)
 	reviewService := services.NewReviewService(reviewRepo, contractRepo, userRepo)
 	adminService := services.NewAdminService(adminRepo, userRepo, jobRepo)
+	dashboardService := services.NewDashboardService(jobRepo, contractRepo, bidRepo, paymentRepo)
 
 	// handlers
 	healthHandler := handlers.NewHealthHandler(db)
@@ -44,6 +45,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 	messageHandler := handlers.NewMessageHandler(messageService, hub, cfg.JWTSecret)
 	reviewHandler := handlers.NewReviewHandler(reviewService, validator.New())
 	adminHandler := handlers.NewAdminHandler(adminService, validator.New(), cfg.AdminSecret)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardService)
 
 	r.Static("/uploads", "./uploads")
 
@@ -73,6 +75,14 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 
 		// user routes
 		api.GET("/users/:id", authHandler.GetPublicProfile)
+
+		// dashboard routes
+		dashboards := api.Group("/dashboard")
+		dashboards.Use(middleware.AuthRequired(cfg.JWTSecret))
+		{
+			dashboards.GET("/client", middleware.RoleRequired("client"), dashboardHandler.GetClientDashboard)
+			dashboards.GET("/freelancer", middleware.RoleRequired("freelancer"), dashboardHandler.GetFreelancerDashboard)
+		}
 
 		// job routes
 		jobs := api.Group("/jobs")
@@ -137,6 +147,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			payments.POST("/webhook", paymentHandler.HandleWebhook)
 
 			// protected payment routes
+			payments.GET("", middleware.AuthRequired(cfg.JWTSecret), paymentHandler.ListMyPayments)
 			payments.GET("/contract/:id", middleware.AuthRequired(cfg.JWTSecret), paymentHandler.GetByContractID)
 			payments.POST("/intent", middleware.AuthRequired(cfg.JWTSecret), middleware.RoleRequired("client"), paymentHandler.CreateIntent)
 		}

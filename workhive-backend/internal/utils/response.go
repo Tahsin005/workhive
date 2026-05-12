@@ -2,6 +2,7 @@ package utils
 
 import (
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
@@ -115,4 +116,16 @@ func InternalError(c *gin.Context, message string) {
 		Success: false,
 		Message: message,
 	})
+}
+
+func GetQueryInt(c *gin.Context, key string, defaultValue int) int {
+	valStr := c.Query(key)
+	if valStr == "" {
+		return defaultValue
+	}
+	val, err := strconv.Atoi(valStr)
+	if err != nil {
+		return defaultValue
+	}
+	return val
 }

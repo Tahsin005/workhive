@@ -38,7 +38,7 @@ import {
 
 export default function MyJobsPage() {
   const [page, setPage] = useState(1)
-  const limit = 20
+  const limit = 10
 
   const { data, isLoading, isError, isFetching } = useGetMyJobsQuery({ page, limit })
   const [deleteJob] = useDeleteJobMutation()
@@ -80,7 +80,8 @@ export default function MyJobsPage() {
   }
 
   const jobs = data?.data || []
-  const meta = data?.meta
+  const pagination = (data as any)?.pagination
+  const totalPages = pagination ? Math.ceil(pagination.total / (pagination.limit || limit)) : 1
 
   return (
     <div className="space-y-6">
@@ -184,7 +185,7 @@ export default function MyJobsPage() {
             ))}
           </div>
 
-          {meta && meta.total_pages > 1 && (
+          {pagination && totalPages > 1 && (
             <Pagination className="mt-8 justify-end">
               <PaginationContent>
                 <PaginationItem>
@@ -194,12 +195,12 @@ export default function MyJobsPage() {
                   />
                 </PaginationItem>
                 <span className="flex items-center text-sm text-muted-foreground px-4">
-                  Page {page} of {meta.total_pages}
+                  Page {page} of {totalPages}
                 </span>
                 <PaginationItem>
                   <PaginationNext 
-                    onClick={() => setPage(p => Math.min(meta.total_pages, p + 1))}
-                    className={page === meta.total_pages ? "pointer-events-none opacity-50" : "cursor-pointer"}
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    className={page === totalPages ? "pointer-events-none opacity-50" : "cursor-pointer"}
                   />
                 </PaginationItem>
               </PaginationContent>

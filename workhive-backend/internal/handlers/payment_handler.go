@@ -109,3 +109,18 @@ func (h *PaymentHandler) GetByContractID(c *gin.Context) {
 
 	utils.OK(c, "Payments fetched successfully", dto.ToPaymentResponses(payments))
 }
+
+func (h *PaymentHandler) ListMyPayments(c *gin.Context) {
+	userID, _ := c.Get("userID")
+
+	page := utils.GetQueryInt(c, "page", 1)
+	limit := utils.GetQueryInt(c, "limit", 10)
+
+	payments, total, err := h.paymentService.ListMyPayments(userID.(uuid.UUID), page, limit)
+	if err != nil {
+		utils.InternalError(c, "Failed to fetch payments")
+		return
+	}
+
+	utils.PaginatedOK(c, "Payments fetched successfully", dto.ToPaymentResponses(payments), total, page, limit)
+}

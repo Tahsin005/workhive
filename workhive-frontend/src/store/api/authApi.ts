@@ -5,10 +5,9 @@ import type { RootState } from '..'
 import type { ApiResponse, AuthResponse, TokenPair, User } from '../../types/auth'
 import { clearAuth, setToken } from '../slices/authSlice'
 
-// Mutex prevents multiple simultaneous refresh calls (e.g. parallel 401s)
 const mutex = new Mutex()
 
-// No `credentials: 'include'` — refresh token is in localStorage, not a cookie
+
 const rawBaseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
   prepareHeaders: (headers, { getState }) => {
@@ -20,7 +19,7 @@ const rawBaseQuery = fetchBaseQuery({
   },
 })
 
-// Reauth interceptor — uses localStorage refresh token on 401
+
 const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQueryError> = async (
   args,
   api,
@@ -41,7 +40,7 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
           return result
         }
 
-        // Send refresh token in request body
+
         const refreshResult = await rawBaseQuery(
           {
             url: '/auth/refresh',
@@ -57,17 +56,17 @@ const baseQueryWithReauth: BaseQueryFn<string | FetchArgs, unknown, FetchBaseQue
           api.dispatch(setToken(data.token))
           localStorage.setItem('token', data.token)
           localStorage.setItem('refreshToken', data.refresh_token)
-          // Retry the original request with the new access token
+
           result = await rawBaseQuery(args, api, extraOptions)
         } else {
-          // Refresh failed — log the user out completely
+
           api.dispatch(clearAuth())
         }
       } finally {
         release()
       }
     } else {
-      // Another request is already refreshing — wait and retry
+
       await mutex.waitForUnlock()
       result = await rawBaseQuery(args, api, extraOptions)
     }

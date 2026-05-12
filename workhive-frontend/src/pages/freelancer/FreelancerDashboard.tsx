@@ -12,8 +12,7 @@ import {
 import { format } from 'date-fns'
 
 import { useMeQuery } from '@/store/api/authApi'
-import { useGetMyBidsQuery } from '@/store/api/bidsApi'
-import { useGetContractsQuery } from '@/store/api/contractsApi'
+import { useGetFreelancerDashboardQuery } from '@/store/api/dashboardApi'
 import { DashboardStats, StatCard } from '@/components/DashboardStats'
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -22,22 +21,18 @@ import { Skeleton } from '@/components/ui/skeleton'
 
 export default function FreelancerDashboard() {
   const { data: userData, isLoading: isLoadingUser } = useMeQuery()
-  const { data: bidsData, isLoading: isLoadingBids } = useGetMyBidsQuery({ limit: 100 })
-  const { data: contractsData, isLoading: isLoadingContracts } = useGetContractsQuery({ limit: 5 })
-  const { data: activeContractsData } = useGetContractsQuery({ status: 'active', limit: 100 })
+  const { data: dashboardData, isLoading: isLoadingDashboard } = useGetFreelancerDashboardQuery()
 
   const user = userData?.data
-  const bids = bidsData?.data || []
-  const recentContracts = contractsData?.data || []
-  const activeContractsCount = activeContractsData?.data?.length || 0
-  const pendingBidsCount = bids.filter(b => b.status === 'pending').length
+  const stats = dashboardData?.data?.stats
+  const recentBids = dashboardData?.data?.recent_bids || []
+  const recentContracts = dashboardData?.data?.recent_contracts || []
   
-  // Aggregate total earnings from completed contracts
-  const totalEarnings = contractsData?.data?.reduce((acc, c) => {
-    return c.status === 'completed' ? acc + c.amount : acc
-  }, 0) || 0
+  const activeContractsCount = stats?.active_contracts || 0
+  const pendingBidsCount = stats?.total_bids || 0
+  const totalEarnings = stats?.total_earnings || 0
 
-  if (isLoadingUser || isLoadingBids || isLoadingContracts) {
+  if (isLoadingUser || isLoadingDashboard) {
     return <DashboardLoadingSkeleton />
   }
 
@@ -85,7 +80,6 @@ export default function FreelancerDashboard() {
       </DashboardStats>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Contracts */}
         <Card className="lg:col-span-2 border-none shadow-sm ring-1 ring-gray-200">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
@@ -141,7 +135,7 @@ export default function FreelancerDashboard() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions & Tips */}
+
         <div className="space-y-6">
           <Card className="bg-primary/5 border-primary/10 shadow-none">
             <CardHeader>

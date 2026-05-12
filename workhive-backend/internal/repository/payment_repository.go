@@ -13,6 +13,11 @@ type PaymentRepository interface {
 	FindByContractID(contractID uuid.UUID) ([]models.Payment, error)
 	Update(payment *models.Payment) error
 	HasActivePayment(contractID uuid.UUID) (bool, error)
+	FindByUserID(userID uuid.UUID, offset, limit int) ([]models.Payment, error)
+	CountByUserID(userID uuid.UUID) (int64, error)
+	SumSpentByUserID(userID uuid.UUID) (float64, error)
+	SumEarningsByUserID(userID uuid.UUID) (float64, error)
+	WithTx(tx *gorm.DB) PaymentRepository
 }
 
 type paymentRepository struct {
@@ -55,4 +60,44 @@ func (r *paymentRepository) HasActivePayment(contractID uuid.UUID) (bool, error)
 		Where("contract_id = ? AND status IN (?, ?)", contractID, models.PaymentStatusPending, models.PaymentStatusPaid).
 		Count(&count).Error
 	return count > 0, err
+}
+func (r *paymentRepository) FindByUserID(userID uuid.UUID, offset, limit int) ([]models.Payment, error) {
+	var payments []models.Payment
+	err := r.db.Preload("Contract").
+		Preload("Contract.Job").
+		Where("payer_id = ?", userID).
+		Order("created_at DESC").
+		Offset(offset).
+		Limit(limit).
+		Find(&payments).Error
+	return payments, err
+}
+
+func (r *paymentRepository) CountByUserID(userID uuid.UUID) (int64, error) {
+	var count int64
+	err := r.db.Model(&models.Payment{}).Where("payer_id = ?", userID).Count(&count).Error
+	return count, err
+}
+
+func (r *paymentRepository) SumSpentByUserID(userID uuid.UUID) (float64, error) {
+	var total float64
+	err := r.db.Model(&models.Payment{}).
+		Where("payer_id = ? AND status = ?", userID, models.PaymentStatusPaid).
+		Select("COALESCE(SUM(amount), 0)").
+		Scan(&total).Error
+	return total, err
+}
+
+func (r *paymentRepository) SumEarningsByUserID(userID uuid.UUID) (float64, error) {
+	var total float64
+	err := r.db.Model(&models.Payment{}).
+		Joins("JOIN contracts ON payments.contract_id = contracts.id").
+		Where("contracts.freelancer_id = ? AND payments.status = ?", userID, models.PaymentStatusPaid).
+		Select("COALESCE(SUM(payments.amount), 0)").
+		Scan(&total).Error
+	return total, err
+}
+
+func (r *paymentRepository) WithTx(tx *gorm.DB) PaymentRepository {
+	return &paymentRepository{db: tx}
 }

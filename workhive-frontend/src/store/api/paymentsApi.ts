@@ -5,13 +5,15 @@ import type { RootState } from '../index'
 export interface Payment {
   id: string
   contract_id: string
-  client_id: string
-  freelancer_id: string
   amount: number
-  currency: string
   status: 'pending' | 'paid' | 'failed' | 'refunded'
-  stripe_payment_intent_id: string
+  stripe_payment_id?: string
+  paid_at?: string
   created_at: string
+  contract?: {
+    id: string
+    title: string
+  }
 }
 
 const baseQuery = fetchBaseQuery({
@@ -30,9 +32,16 @@ export const paymentsApi = createApi({
   baseQuery,
   tagTypes: ['Payment', 'ContractPayments'],
   endpoints: (builder) => ({
-    getPaymentByContract: builder.query<ApiResponse<Payment>, string>({
+    getPaymentByContract: builder.query<ApiResponse<Payment[]>, string>({
       query: (contractId) => `/payments/contract/${contractId}`,
       providesTags: (result, error, id) => [{ type: 'ContractPayments', id }],
+    }),
+    getMyPayments: builder.query<ApiResponse<Payment[]>, { page?: number; limit?: number }>({
+      query: (params) => ({
+        url: '/payments',
+        params,
+      }),
+      providesTags: ['Payment'],
     }),
     createPaymentIntent: builder.mutation<ApiResponse<{ client_secret: string; payment_intent_id: string }>, { contract_id: string }>({
       query: (body) => ({
@@ -46,5 +55,6 @@ export const paymentsApi = createApi({
 
 export const { 
   useGetPaymentByContractQuery, 
+  useGetMyPaymentsQuery,
   useCreatePaymentIntentMutation 
 } = paymentsApi
