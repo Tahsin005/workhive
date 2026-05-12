@@ -24,7 +24,14 @@ export function PaymentForm({ amount, onSuccess }: PaymentFormProps) {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!stripe || !elements) return
+    if (!stripe || !elements) {
+      return
+    }
+
+    const paymentElement = elements.getElement(PaymentElement)
+    if (!paymentElement) {
+      return
+    }
 
     setIsProcessing(true)
 

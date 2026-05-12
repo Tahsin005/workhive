@@ -160,7 +160,7 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 		{
 			messages.GET("/:contractId", messageHandler.GetHistory)
 			messages.POST("/:contractId", messageHandler.SendMessage)
-			messages.PUT("/:contractId/read", messageHandler.MarkAsRead)
+			messages.POST("/:contractId/read", messageHandler.MarkAsRead)
 		}
 
 		// WebSocket — auth via query param
