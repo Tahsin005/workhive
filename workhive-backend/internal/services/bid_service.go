@@ -45,15 +45,25 @@ func (s *bidService) SubmitBid(jobID uuid.UUID, freelancerID uuid.UUID, input mo
 		return nil, errors.New("you cannot bid on your own job")
 	}
 
-	// check if freelancer already has an active (pending/accepted) bid
-	hasActive, err := s.bidRepo.HasActiveBid(jobID.String(), freelancerID.String())
-	if err != nil {
-		return nil, err
-	}
-	if hasActive {
-		return nil, errors.New("you have already bid on this job")
+	// check if freelancer already has a bid (any status)
+	existingBid, err := s.bidRepo.GetByJobAndFreelancer(jobID.String(), freelancerID.String())
+	if err == nil {
+		// if it's active, block new submission
+		if existingBid.Status == models.BidStatusPending || existingBid.Status == models.BidStatusAccepted {
+			return nil, errors.New("you have already bid on this job")
+		}
+
+		// if it was withdrawn or rejected, allow "re-submitting" by updating it
+		existingBid.Amount = input.Amount
+		existingBid.CoverLetter = input.CoverLetter
+		existingBid.Status = models.BidStatusPending
+		if err := s.bidRepo.Update(existingBid); err != nil {
+			return nil, err
+		}
+		return existingBid, nil
 	}
 
+	// if no existing bid, create new one
 	bid := models.Bid{
 		JobID:        jobID,
 		FreelancerID: freelancerID,

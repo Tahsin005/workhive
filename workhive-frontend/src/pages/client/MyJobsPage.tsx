@@ -38,7 +38,7 @@ import {
 
 export default function MyJobsPage() {
   const [page, setPage] = useState(1)
-  const limit = 10
+  const limit = 20
 
   const { data, isLoading, isError, isFetching } = useGetMyJobsQuery({ page, limit })
   const [deleteJob] = useDeleteJobMutation()

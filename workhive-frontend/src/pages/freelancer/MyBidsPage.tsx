@@ -22,11 +22,8 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import {
   Card,
-  CardContent,
   CardDescription,
-  CardHeader,
   CardTitle,
-  CardFooter
 } from "@/components/ui/card"
 import {
   Pagination,
@@ -51,7 +48,7 @@ export default function MyBidsPage() {
   const meta = data?.meta
 
   const handleWithdraw = async (id: string) => {
-    if (window.confirm("Are you sure you want to withdraw this proposal? You will not be able to bid on this job again immediately unless your status allows it.")) {
+    if (window.confirm("Are you sure you want to withdraw this proposal? You can still submit a new proposal later if the job is still open.")) {
       try {
         await withdrawBid(id).unwrap()
         toast.success("Proposal withdrawn successfully.")

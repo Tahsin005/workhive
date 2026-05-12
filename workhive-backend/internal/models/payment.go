@@ -21,6 +21,7 @@ type Payment struct {
 	PayerID         uuid.UUID     `gorm:"type:uuid;not null;index" json:"payer_id"`
 	Amount          float64       `gorm:"type:decimal(12,2);not null" json:"amount"`
 	StripePaymentID *string       `gorm:"type:varchar(255);uniqueIndex" json:"stripe_payment_id"`
+	ClientSecret    *string       `gorm:"type:varchar(255)" json:"client_secret"`
 	Status          PaymentStatus `gorm:"type:varchar(20);default:'pending';index" json:"status"`
 	PaidAt          *time.Time    `gorm:"default:null" json:"paid_at"`
 

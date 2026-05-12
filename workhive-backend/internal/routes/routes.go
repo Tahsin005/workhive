@@ -71,6 +71,9 @@ func Setup(r *gin.Engine, db *gorm.DB, cfg *config.Config, hub *ws.Hub) {
 			}
 		}
 
+		// user routes
+		api.GET("/users/:id", authHandler.GetPublicProfile)
+
 		// job routes
 		jobs := api.Group("/jobs")
 		{

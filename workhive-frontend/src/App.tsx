@@ -34,6 +34,7 @@ import JobBidsPage from "./pages/client/JobBidsPage"
 import ClientContractsPage from "./pages/client/ClientContractsPage"
 import ClientContractDetailPage from "./pages/client/ClientContractDetailPage"
 import PaymentsPage from "./pages/client/PaymentsPage"
+import CheckoutPage from "./pages/client/CheckoutPage"
 
 // Freelancer Pages
 import FreelancerDashboard from "./pages/freelancer/FreelancerDashboard"
@@ -106,6 +107,7 @@ function App() {
               <Route path="/client/jobs/:id/bids" element={<JobBidsPage />} />
               <Route path="/client/contracts" element={<ClientContractsPage />} />
               <Route path="/client/contracts/:id" element={<ClientContractDetailPage />} />
+              <Route path="/client/contracts/:id/pay" element={<CheckoutPage />} />
               <Route path="/client/payments" element={<PaymentsPage />} />
               <Route path="/client/profile" element={<ProfilePage />} />
             </Route>

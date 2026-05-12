@@ -246,3 +246,19 @@ func (h *AuthHandler) UpdateAvatar(c *gin.Context) {
 
 	utils.OK(c, "Avatar updated successfully", dto.ToUserResponse(updatedUser))
 }
+
+func (h *AuthHandler) GetPublicProfile(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		utils.BadRequest(c, "Invalid user ID", nil)
+		return
+	}
+
+	user, err := h.authService.GetUserByID(id)
+	if err != nil {
+		utils.NotFound(c, "User not found")
+		return
+	}
+
+	utils.OK(c, "Profile fetched successfully", dto.ToUserResponse(user))
+}

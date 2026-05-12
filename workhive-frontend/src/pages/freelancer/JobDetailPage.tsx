@@ -1,11 +1,13 @@
+import { useEffect } from "react"
 import { useParams, Link, useNavigate } from "react-router"
 import { useForm, Controller } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { format } from "date-fns"
 import { toast } from "sonner"
-import { ArrowLeft, Loader2, DollarSign, Clock, Send } from "lucide-react"
+import { ArrowLeft, Loader2, DollarSign, Clock, Send, AlertCircle } from "lucide-react"
 
 import { useGetJobQuery, useSubmitBidMutation } from "@/store/api/jobsApi"
+import { useGetMyBidsQuery } from "@/store/api/bidsApi"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -25,6 +27,7 @@ export default function FreelancerJobDetailPage() {
   const navigate = useNavigate()
   
   const { data: jobData, isLoading: isLoadingJob, isError } = useGetJobQuery(id!)
+  const { data: bidsData, isLoading: isLoadingBids } = useGetMyBidsQuery({ limit: 100 })
   const [submitBid, { isLoading: isSubmitting }] = useSubmitBidMutation()
 
   const {
@@ -41,6 +44,20 @@ export default function FreelancerJobDetailPage() {
   })
 
   const job = jobData?.data
+  const activeBid = bidsData?.data?.find(bid => bid.job_id === id && (bid.status === 'pending' || bid.status === 'accepted'))
+  const previousBid = bidsData?.data?.find(bid => bid.job_id === id)
+  
+  useEffect(() => {
+    if (previousBid && !activeBid) {
+      reset({
+        amount: String(previousBid.amount),
+        cover_letter: previousBid.cover_letter,
+      })
+    }
+  }, [previousBid, activeBid, reset])
+
+  const existingBid = activeBid || previousBid
+  const showBiddingForm = job?.status === 'open' && !activeBid
 
   if (isLoadingJob) {
     return (
@@ -60,6 +77,7 @@ export default function FreelancerJobDetailPage() {
       </div>
     )
   }
+
 
   const onSubmitBid = async (values: SubmitBidFormValues) => {
     try {
@@ -113,8 +131,14 @@ export default function FreelancerJobDetailPage() {
             </CardContent>
           </Card>
 
-          {job.status === 'open' && (
+          {showBiddingForm && (
             <Card className="border shadow-sm border-indigo-100" id="proposal-form">
+              {previousBid && !activeBid && (
+                <div className="bg-amber-50 border-b border-amber-100 px-6 py-2 flex items-center gap-2 text-xs text-amber-800">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>You previously submitted a proposal that was {previousBid.status}. You can submit a new one below.</span>
+                </div>
+              )}
               <CardHeader className="bg-indigo-50/50 border-b border-indigo-100">
                 <CardTitle className="text-xl flex items-center gap-2 text-indigo-900">
                   <Send className="h-5 w-5 text-indigo-600" />
@@ -182,6 +206,44 @@ export default function FreelancerJobDetailPage() {
                     )}
                   </Button>
                 </form>
+              </CardContent>
+            </Card>
+          )}
+
+          {activeBid && (
+            <Card className="border-indigo-100 bg-indigo-50/30">
+              <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-indigo-900">
+                  <Badge variant={activeBid.status === 'pending' ? 'secondary' : activeBid.status === 'accepted' ? 'default' : 'destructive'} className="h-2 w-2 rounded-full p-0 mr-1" />
+                  Your Proposal Status: <span className="capitalize">{activeBid.status}</span>
+                </CardTitle>
+                <CardDescription>You have already submitted a proposal for this job.</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-4 bg-white rounded-lg border border-indigo-100 shadow-sm">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Your Proposed Rate</p>
+                    <p className="text-2xl font-bold text-indigo-600">${activeBid.amount}</p>
+                  </div>
+                  <div className="p-4 bg-white rounded-lg border border-indigo-100 shadow-sm">
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-1">Submitted On</p>
+                    <p className="text-lg font-semibold">{format(new Date(activeBid.created_at), 'MMM d, yyyy')}</p>
+                  </div>
+                </div>
+                <div className="p-4 bg-white rounded-lg border border-indigo-100 shadow-sm">
+                  <p className="text-xs text-muted-foreground uppercase tracking-wider font-bold mb-2">Your Pitch</p>
+                  <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">{activeBid.cover_letter}</p>
+                </div>
+                <div className="flex gap-3">
+                  <Button variant="outline" className="flex-1" asChild>
+                    <Link to="/freelancer/bids/my">
+                      Manage All Proposals
+                    </Link>
+                  </Button>
+                  <Button variant="outline" className="flex-1 text-destructive hover:bg-destructive/10" disabled>
+                    Withdraw Proposal
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}

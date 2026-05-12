@@ -21,6 +21,7 @@ type AuthService interface {
 	UpdateAvatar(id uuid.UUID, avatarURL string) (*models.User, error)
 	ChangePassword(id uuid.UUID, input models.ChangePasswordInput) error
 	DeleteMe(id uuid.UUID) error
+	GetUserByID(id uuid.UUID) (*models.User, error)
 	Refresh(refreshToken string) (*models.AuthResponse, error)
 	Logout(refreshToken string) error
 }
@@ -132,6 +133,10 @@ func (s *authService) Login(input models.LoginInput) (*models.AuthResponse, erro
 }
 
 func (s *authService) GetMe(id uuid.UUID) (*models.User, error) {
+	return s.userRepo.FindByID(id)
+}
+
+func (s *authService) GetUserByID(id uuid.UUID) (*models.User, error) {
 	return s.userRepo.FindByID(id)
 }
 

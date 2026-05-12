@@ -58,12 +58,28 @@ func (s *paymentService) CreateIntent(userID uuid.UUID, input models.CreatePayme
 		return nil, errors.New("contract is not active")
 	}
 
-	hasActive, err := s.paymentRepo.HasActivePayment(contractID)
+	payments, err := s.paymentRepo.FindByContractID(contractID)
 	if err != nil {
 		return nil, err
 	}
-	if hasActive {
-		return nil, errors.New("a pending or paid payment already exists for this contract")
+
+	var pendingPayment *models.Payment
+	for _, p := range payments {
+		if p.Status == models.PaymentStatusPaid {
+			return nil, errors.New("this contract has already been paid")
+		}
+		if p.Status == models.PaymentStatusPending {
+			pendingPayment = &p
+		}
+	}
+
+	if pendingPayment != nil && pendingPayment.StripePaymentID != nil && pendingPayment.ClientSecret != nil {
+		return &dto.PaymentIntentResponse{
+			ClientSecret: *pendingPayment.ClientSecret,
+			PaymentID:    pendingPayment.ID,
+			Amount:       pendingPayment.Amount,
+			Currency:     "usd",
+		}, nil
 	}
 
 	params := &stripe.PaymentIntentParams{
@@ -89,6 +105,7 @@ func (s *paymentService) CreateIntent(userID uuid.UUID, input models.CreatePayme
 		PayerID:         userID,
 		Amount:          contract.Amount,
 		StripePaymentID: &intent.ID,
+		ClientSecret:    &intent.ClientSecret,
 		Status:          models.PaymentStatusPending,
 	}
 

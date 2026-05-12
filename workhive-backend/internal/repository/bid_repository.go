@@ -14,6 +14,7 @@ type BidRepository interface {
 	RejectOtherBids(jobID string, acceptedBidID string) error
 	HasAcceptedBid(jobID string) (bool, error)
 	HasActiveBid(jobID string, freelancerID string) (bool, error)
+	GetByJobAndFreelancer(jobID string, freelancerID string) (*models.Bid, error)
 }
 
 type bidRepository struct {
@@ -90,4 +91,12 @@ func (r *bidRepository) HasActiveBid(jobID string, freelancerID string) (bool, e
 	var count int64
 	err := r.db.Model(&models.Bid{}).Where("job_id = ? AND freelancer_id = ? AND status IN ?", jobID, freelancerID, []models.BidStatus{models.BidStatusPending, models.BidStatusAccepted}).Count(&count).Error
 	return count > 0, err
+}
+func (r *bidRepository) GetByJobAndFreelancer(jobID string, freelancerID string) (*models.Bid, error) {
+	var bid models.Bid
+	err := r.db.Preload("Freelancer").Preload("Job").Preload("Job.Client").Where("job_id = ? AND freelancer_id = ?", jobID, freelancerID).First(&bid).Error
+	if err != nil {
+		return nil, err
+	}
+	return &bid, nil
 }

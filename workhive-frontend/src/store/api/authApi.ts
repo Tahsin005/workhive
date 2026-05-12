@@ -106,7 +106,43 @@ export const authApi = createApi({
         body,
       }),
     }),
+    getUserProfile: builder.query<ApiResponse<User>, string>({
+      query: (id) => `/users/${id}`,
+      providesTags: (result, error, id) => [{ type: 'User', id }],
+    }),
+    updateProfile: builder.mutation<ApiResponse<User>, { full_name: string; bio?: string }>({
+      query: (body) => ({
+        url: '/auth/me',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    updateAvatar: builder.mutation<ApiResponse<User>, FormData>({
+      query: (body) => ({
+        url: '/auth/me/avatar',
+        method: 'PUT',
+        body,
+      }),
+      invalidatesTags: ['User'],
+    }),
+    changePassword: builder.mutation<ApiResponse<void>, any>({
+      query: (body) => ({
+        url: '/auth/me/password',
+        method: 'PUT',
+        body,
+      }),
+    }),
   }),
 })
 
-export const { useRegisterMutation, useLoginMutation, useMeQuery, useRefreshMutation } = authApi
+export const { 
+  useRegisterMutation, 
+  useLoginMutation, 
+  useMeQuery, 
+  useRefreshMutation, 
+  useGetUserProfileQuery,
+  useUpdateProfileMutation,
+  useUpdateAvatarMutation,
+  useChangePasswordMutation
+} = authApi

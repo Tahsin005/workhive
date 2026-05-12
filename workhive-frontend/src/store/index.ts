@@ -5,6 +5,10 @@ import { adminApi } from './api/adminApi'
 import { jobsApi } from './api/jobsApi'
 import { bidsApi } from './api/bidsApi'
 import { contractsApi } from './api/contractsApi'
+import { reviewsApi } from './api/reviewsApi'
+import { messagesApi } from './api/messagesApi'
+import { paymentsApi } from './api/paymentsApi'
+
 export const store = configureStore({
   reducer: {
     auth: authReducer,
@@ -13,6 +17,9 @@ export const store = configureStore({
     [jobsApi.reducerPath]: jobsApi.reducer,
     [bidsApi.reducerPath]: bidsApi.reducer,
     [contractsApi.reducerPath]: contractsApi.reducer,
+    [reviewsApi.reducerPath]: reviewsApi.reducer,
+    [messagesApi.reducerPath]: messagesApi.reducer,
+    [paymentsApi.reducerPath]: paymentsApi.reducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware().concat(
@@ -20,7 +27,10 @@ export const store = configureStore({
       adminApi.middleware,
       jobsApi.middleware,
       bidsApi.middleware,
-      contractsApi.middleware
+      contractsApi.middleware,
+      reviewsApi.middleware,
+      messagesApi.middleware,
+      paymentsApi.middleware
     ),
 })
 

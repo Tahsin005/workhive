@@ -9,7 +9,8 @@ import {
   Clock,
   User as UserIcon,
   Loader2,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react"
 
 import { useGetJobsQuery } from "@/store/api/jobsApi"
@@ -28,11 +29,22 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from "@/components/ui/pagination"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export default function BrowseJobsPage() {
   const [page, setPage] = useState(1)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [category, setCategory] = useState("all")
+  const [minPrice, setMinPrice] = useState("")
+  const [maxPrice, setMaxPrice] = useState("")
+  const [showFilters, setShowFilters] = useState(false)
 
   useEffect(() => {
     const handler = setTimeout(() => {
@@ -46,8 +58,19 @@ export default function BrowseJobsPage() {
   const { data, isLoading, isError, isFetching } = useGetJobsQuery({ 
     page, 
     limit,
-    ...(debouncedSearch ? { search: debouncedSearch } : {})
+    ...(debouncedSearch ? { search: debouncedSearch } : {}),
+    ...(category !== "all" ? { category } : {}),
+    ...(minPrice ? { min_price: Number(minPrice) } : {}),
+    ...(maxPrice ? { max_price: Number(maxPrice) } : {}),
   })
+
+  const clearFilters = () => {
+    setSearchTerm("")
+    setCategory("all")
+    setMinPrice("")
+    setMaxPrice("")
+    setPage(1)
+  }
 
   const getStatusBadgeVariant = (s: string) => {
     switch (s) {
@@ -87,20 +110,77 @@ export default function BrowseJobsPage() {
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search for jobs..." 
-            className="pl-9"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="space-y-4">
+        <div className="flex flex-col md:flex-row gap-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search for jobs..." 
+              className="pl-9"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div className="flex gap-2">
+            <Button 
+              variant={showFilters ? "secondary" : "outline"} 
+              onClick={() => setShowFilters(!showFilters)}
+              className="relative"
+            >
+              <Filter className="mr-2 h-4 w-4" />
+              Filters
+              {(category !== "all" || minPrice || maxPrice) && (
+                <span className="absolute -top-1 -right-1 h-3 w-3 bg-indigo-600 rounded-full border-2 border-white" />
+              )}
+            </Button>
+            {(searchTerm || category !== "all" || minPrice || maxPrice) && (
+              <Button variant="ghost" onClick={clearFilters} size="icon">
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
         </div>
-        <Button variant="outline" className="w-full md:w-auto">
-          <Filter className="mr-2 h-4 w-4" />
-          Filters
-        </Button>
+
+        {showFilters && (
+          <Card className="p-4 bg-gray-50/50 border-dashed">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Category</label>
+                <Select value={category} onValueChange={setCategory}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All Categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Categories</SelectItem>
+                    <SelectItem value="Web Development">Web Development</SelectItem>
+                    <SelectItem value="Mobile Development">Mobile Development</SelectItem>
+                    <SelectItem value="Design">Design</SelectItem>
+                    <SelectItem value="Writing">Writing</SelectItem>
+                    <SelectItem value="Marketing">Marketing</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Min Budget ($)</label>
+                <Input 
+                  type="number" 
+                  placeholder="e.g. 100" 
+                  value={minPrice} 
+                  onChange={(e) => setMinPrice(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Max Budget ($)</label>
+                <Input 
+                  type="number" 
+                  placeholder="e.g. 5000" 
+                  value={maxPrice} 
+                  onChange={(e) => setMaxPrice(e.target.value)}
+                />
+              </div>
+            </div>
+          </Card>
+        )}
       </div>
 
       {jobs.length === 0 ? (
