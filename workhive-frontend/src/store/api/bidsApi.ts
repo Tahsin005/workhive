@@ -2,6 +2,7 @@ import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { Bid, SubmitBidRequest } from '@/types/bid'
 import type { ApiResponse } from '@/types/auth'
 import type { RootState } from '../index'
+import { jobsApi } from './jobsApi'
 
 
 export interface PaginatedBids {
@@ -53,6 +54,14 @@ export const bidsApi = createApi({
         { type: 'Bid', id },
         { type: 'Bids', id: 'LIST' }
       ],
+      async onQueryStarted({ id }, { dispatch, queryFulfilled, getState }) {
+        try {
+          const { data: result } = await queryFulfilled
+          if (result.data?.job_id) {
+            dispatch(jobsApi.util.invalidateTags([{ type: 'Job', id: result.data.job_id }]))
+          }
+        } catch {}
+      },
     }),
     withdrawBid: builder.mutation<ApiResponse<void>, string>({
       query: (id) => ({
@@ -63,6 +72,15 @@ export const bidsApi = createApi({
         { type: 'Bid', id },
         { type: 'Bids', id: 'LIST' }
       ],
+      async onQueryStarted(id, { dispatch, queryFulfilled, getState }) {
+        try {
+          await queryFulfilled
+          // We don't have the job ID easily here without looking at the cache, 
+          // but we can invalidate all jobs list to be safe, or just wait for the next fetch.
+          // Better: just invalidate the Jobs list.
+          dispatch(jobsApi.util.invalidateTags([{ type: 'Jobs', id: 'LIST' }]))
+        } catch {}
+      },
     }),
   }),
 })

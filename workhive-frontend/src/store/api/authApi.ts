@@ -96,7 +96,7 @@ export const authApi = createApi({
     }),
     me: builder.query<ApiResponse<User>, void>({
       query: () => '/auth/me',
-      providesTags: ['User'],
+      providesTags: (result) => result ? [{ type: 'User', id: result.data.id }] : ['User'],
     }),
     refresh: builder.mutation<ApiResponse<TokenPair>, { refresh_token: string }>({
       query: (body) => ({
@@ -115,7 +115,7 @@ export const authApi = createApi({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: (result) => result ? [{ type: 'User', id: result.data.id }] : ['User'],
     }),
     updateAvatar: builder.mutation<ApiResponse<User>, FormData>({
       query: (body) => ({
@@ -123,7 +123,7 @@ export const authApi = createApi({
         method: 'PUT',
         body,
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: (result) => result ? [{ type: 'User', id: result.data.id }] : ['User'],
     }),
     changePassword: builder.mutation<ApiResponse<void>, any>({
       query: (body) => ({

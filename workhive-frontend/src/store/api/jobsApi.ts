@@ -3,6 +3,7 @@ import type { Job, CreateJobRequest, UpdateJobRequest, PaginatedJobs } from '@/t
 import type { Bid, SubmitBidRequest } from '@/types/bid'
 import type { ApiResponse } from '@/types/auth'
 import type { RootState } from '../index'
+import { contractsApi } from './contractsApi'
 
 const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
@@ -25,14 +26,26 @@ export const jobsApi = createApi({
         url: '/jobs',
         params,
       }),
-      providesTags: ['Jobs'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.data.map(({ id }) => ({ type: 'Job' as const, id })),
+              { type: 'Jobs', id: 'LIST' }
+            ]
+          : [{ type: 'Jobs', id: 'LIST' }],
     }),
     getMyJobs: builder.query<PaginatedJobs, { page?: number; limit?: number }>({
       query: (params) => ({
         url: '/jobs/my',
         params,
       }),
-      providesTags: ['MyJobs'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.data.map(({ id }) => ({ type: 'Job' as const, id })),
+              { type: 'MyJobs', id: 'LIST' }
+            ]
+          : [{ type: 'MyJobs', id: 'LIST' }],
     }),
     getJob: builder.query<ApiResponse<Job>, string>({
       query: (id) => `/jobs/${id}`,
@@ -44,7 +57,7 @@ export const jobsApi = createApi({
         method: 'POST',
         body,
       }),
-      invalidatesTags: ['Jobs', 'MyJobs'],
+      invalidatesTags: [{ type: 'Jobs', id: 'LIST' }, { type: 'MyJobs', id: 'LIST' }],
     }),
     updateJob: builder.mutation<ApiResponse<Job>, { id: string; data: UpdateJobRequest }>({
       query: ({ id, data }) => ({
@@ -63,7 +76,7 @@ export const jobsApi = createApi({
         url: `/jobs/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['MyJobs', 'Jobs'],
+      invalidatesTags: [{ type: 'MyJobs', id: 'LIST' }, { type: 'Jobs', id: 'LIST' }],
     }),
     getJobBids: builder.query<ApiResponse<Bid[]>, string>({
       query: (id) => `/jobs/${id}/bids`,
@@ -78,7 +91,7 @@ export const jobsApi = createApi({
       invalidatesTags: (_, __, { id }) => [
         { type: 'JobBids', id },
         { type: 'Job', id },
-        'Jobs'
+        { type: 'Jobs', id: 'LIST' }
       ],
     }),
     acceptBid: builder.mutation<ApiResponse<Bid>, { bidId: string; jobId: string }>({
@@ -89,9 +102,16 @@ export const jobsApi = createApi({
       invalidatesTags: (_, __, { jobId }) => [
         { type: 'JobBids', id: jobId },
         { type: 'Job', id: jobId },
-        'MyJobs',
-        'Jobs'
+        { type: 'MyJobs', id: 'LIST' },
+        { type: 'Jobs', id: 'LIST' }
       ],
+      async onQueryStarted(_, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          // Refresh contracts list after accepting a bid
+          dispatch(contractsApi.util.invalidateTags([{ type: 'Contracts', id: 'LIST' }]))
+        } catch {}
+      },
     }),
     rejectBid: builder.mutation<ApiResponse<void>, { bidId: string; jobId: string }>({
       query: ({ bidId }) => ({

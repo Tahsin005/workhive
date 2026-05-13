@@ -4,6 +4,7 @@ import { Link } from "react-router"
 import { Search, Eye, Trash2, LayoutGrid } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -43,15 +44,27 @@ export default function AdminJobsPage() {
   // Mutation Hook
   const [deleteJob, { isLoading: isDeleting }] = useDeleteJobMutation()
 
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    jobId: string
+  }>({
+    isOpen: false,
+    jobId: "",
+  })
+
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this job? This action may be restricted if it has an active contract.")) return
-    
+    setConfirmConfig({ isOpen: true, jobId: id })
+  }
+
+  const handleConfirmDelete = async () => {
+    const id = confirmConfig.jobId
     try {
       await deleteJob(id).unwrap()
       toast.success("Job successfully deleted.")
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to delete job.")
     }
+    setConfirmConfig({ isOpen: false, jobId: "" })
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -215,6 +228,16 @@ export default function AdminJobsPage() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, jobId: "" })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Job"
+        description="Are you sure you want to delete this job? This action may be restricted if it has an active contract."
+        variant="destructive"
+        confirmText="Delete Job"
+      />
     </div>
   )
 }

@@ -8,6 +8,9 @@ import { toast } from 'sonner'
 import { Loader2, ShieldCheck, Lock } from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
+import { useDispatch } from 'react-redux'
+import { contractsApi } from '@/store/api/contractsApi'
+import { paymentsApi } from '@/store/api/paymentsApi'
 
 interface PaymentFormProps {
   clientSecret: string
@@ -16,9 +19,10 @@ interface PaymentFormProps {
   onSuccess: () => void
 }
 
-export function PaymentForm({ amount, onSuccess }: PaymentFormProps) {
+export function PaymentForm({ amount, onSuccess, contractId }: PaymentFormProps) {
   const stripe = useStripe()
   const elements = useElements()
+  const dispatch = useDispatch()
   const [isProcessing, setIsProcessing] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -43,6 +47,10 @@ export function PaymentForm({ amount, onSuccess }: PaymentFormProps) {
     if (error) {
       toast.error(error.message || 'Something went wrong')
     } else if (paymentIntent && paymentIntent.status === 'succeeded') {
+      // Force invalidate caches so the redirect page shows the new state
+      dispatch(contractsApi.util.invalidateTags([{ type: 'Contract' as const, id: contractId }]))
+      dispatch(paymentsApi.util.invalidateTags([{ type: 'ContractPayments' as const, id: contractId }]))
+      
       toast.success('Payment successful!')
       onSuccess()
     }

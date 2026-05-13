@@ -1,6 +1,7 @@
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 import type { ApiResponse, UserBrief } from '@/types/auth'
 import type { RootState } from '../index'
+import { contractsApi } from './contractsApi'
 
 export interface Review {
   id: string
@@ -55,6 +56,12 @@ export const reviewsApi = createApi({
         body,
       }),
       invalidatesTags: ['UserReviews', 'Reviews'],
+      async onQueryStarted({ contractId }, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          dispatch(contractsApi.util.invalidateTags([{ type: 'Contract', id: contractId }]))
+        } catch {}
+      },
     }),
   }),
 })

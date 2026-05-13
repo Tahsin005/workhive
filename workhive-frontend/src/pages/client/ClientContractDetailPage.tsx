@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/alert"
 import { ReviewForm } from "@/components/ReviewForm"
 import { ChatBox } from "@/components/ChatBox"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 export default function ClientContractDetailPage() {
   const { id } = useParams()
@@ -52,30 +53,57 @@ export default function ClientContractDetailPage() {
   const [completeContract, { isLoading: isCompleting }] = useCompleteContractMutation()
   const [disputeContract, { isLoading: isDisputing }] = useDisputeContractMutation()
 
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: "default" | "destructive"
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  })
+
   const contract = response?.data
   const payments = paymentResponse?.data
   const isPaid = Array.isArray(payments) ? payments.some(p => p.status === 'paid') : false
 
   const handleCancel = async () => {
-    if (!window.confirm("Are you sure you want to cancel this contract? This action will set the job status back to open.")) return
-    
-    try {
-      await cancelContract(id!).unwrap()
-      toast.success("Contract cancelled successfully")
-    } catch (err: any) {
-      toast.error(err.data?.message || "Failed to cancel contract")
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Cancel Contract",
+      description: "Are you sure you want to cancel this contract? This action will set the job status back to open.",
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await cancelContract(id!).unwrap()
+          toast.success("Contract cancelled successfully")
+        } catch (err: any) {
+          toast.error(err.data?.message || "Failed to cancel contract")
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const handleDispute = async () => {
-    if (!window.confirm("Are you sure you want to raise a dispute? An admin will review the case and resolve it.")) return
-    
-    try {
-      await disputeContract(id!).unwrap()
-      toast.success("Dispute raised successfully. An admin will contact you soon.")
-    } catch (err: any) {
-      toast.error(err.data?.message || "Failed to raise dispute")
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Raise Dispute",
+      description: "Are you sure you want to raise a dispute? An admin will review the case and resolve it.",
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await disputeContract(id!).unwrap()
+          toast.success("Dispute raised successfully. An admin will contact you soon.")
+        } catch (err: any) {
+          toast.error(err.data?.message || "Failed to raise dispute")
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const handleComplete = async () => {
@@ -84,14 +112,20 @@ export default function ClientContractDetailPage() {
       return
     }
 
-    if (!window.confirm("Are you sure you want to mark this contract as completed? Make sure the work has been delivered.")) return
-    
-    try {
-      await completeContract(id!).unwrap()
-      toast.success("Contract completed successfully!")
-    } catch (err: any) {
-      toast.error(err.data?.message || "Failed to complete contract")
-    }
+    setConfirmConfig({
+      isOpen: true,
+      title: "Complete Contract",
+      description: "Are you sure you want to mark this contract as completed? Make sure the work has been delivered.",
+      onConfirm: async () => {
+        try {
+          await completeContract(id!).unwrap()
+          toast.success("Contract completed successfully!")
+        } catch (err: any) {
+          toast.error(err.data?.message || "Failed to complete contract")
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }))
+      }
+    })
   }
 
   const getStatusBadge = (status: string) => {
@@ -371,6 +405,15 @@ export default function ClientContractDetailPage() {
           </Card>
         </div>
       </div>
+      
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        description={confirmConfig.description}
+        variant={confirmConfig.variant}
+      />
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import { useState } from "react"
 import { useParams, Link, useNavigate } from "react-router"
 import { format } from "date-fns"
 import { toast } from "sonner"
@@ -19,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 export default function JobBidsPage() {
   const { id } = useParams()
@@ -30,30 +32,56 @@ export default function JobBidsPage() {
   const [acceptBid, { isLoading: isAccepting }] = useAcceptBidMutation()
   const [rejectBid, { isLoading: isRejecting }] = useRejectBidMutation()
 
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    title: string
+    description: string
+    onConfirm: () => void
+    variant?: "default" | "destructive"
+  }>({
+    isOpen: false,
+    title: "",
+    description: "",
+    onConfirm: () => {},
+  })
+
   const job = jobData?.data
   const bids = bidsData?.data || []
 
   const handleAccept = async (bidId: string) => {
-    if (window.confirm("Are you sure you want to accept this proposal? This will immediately generate a contract and reject all other pending bids.")) {
-      try {
-        await acceptBid({ bidId, jobId: id! }).unwrap()
-        toast.success("Proposal accepted! A contract has been created.")
-        navigate('/client/contracts')
-      } catch (err: any) {
-        toast.error(err.data?.message || "Failed to accept the proposal.")
+    setConfirmConfig({
+      isOpen: true,
+      title: "Accept Proposal",
+      description: "Are you sure you want to accept this proposal? This will immediately generate a contract and reject all other pending bids.",
+      onConfirm: async () => {
+        try {
+          await acceptBid({ bidId, jobId: id! }).unwrap()
+          toast.success("Proposal accepted! A contract has been created.")
+          navigate('/client/contracts')
+        } catch (err: any) {
+          toast.error(err.data?.message || "Failed to accept the proposal.")
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }))
       }
-    }
+    })
   }
 
   const handleReject = async (bidId: string) => {
-    if (window.confirm("Are you sure you want to reject this proposal?")) {
-      try {
-        await rejectBid({ bidId, jobId: id! }).unwrap()
-        toast.success("Proposal rejected.")
-      } catch (err: any) {
-        toast.error(err.data?.message || "Failed to reject the proposal.")
+    setConfirmConfig({
+      isOpen: true,
+      title: "Reject Proposal",
+      description: "Are you sure you want to reject this proposal?",
+      variant: "destructive",
+      onConfirm: async () => {
+        try {
+          await rejectBid({ bidId, jobId: id! }).unwrap()
+          toast.success("Proposal rejected.")
+        } catch (err: any) {
+          toast.error(err.data?.message || "Failed to reject the proposal.")
+        }
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }))
       }
-    }
+    })
   }
 
   if (isLoadingJob || isLoadingBids) {
@@ -199,6 +227,15 @@ export default function JobBidsPage() {
           </Card>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={confirmConfig.onConfirm}
+        title={confirmConfig.title}
+        description={confirmConfig.description}
+        variant={confirmConfig.variant}
+      />
     </div>
   )
 }

@@ -14,6 +14,7 @@ import {
   ChevronRight,
   X
 } from "lucide-react"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 import { useGetMyBidsQuery, useUpdateBidMutation, useWithdrawBidMutation } from "@/store/api/bidsApi"
 import { Button } from "@/components/ui/button"
@@ -42,6 +43,14 @@ export default function MyBidsPage() {
   const { data, isLoading, isError, isFetching } = useGetMyBidsQuery({ page, limit })
   const [withdrawBid, { isLoading: isWithdrawing }] = useWithdrawBidMutation()
   
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    bidId: string
+  }>({
+    isOpen: false,
+    bidId: "",
+  })
+  
   const [editingBidId, setEditingBidId] = useState<string | null>(null)
 
   const bids = data?.data || []
@@ -49,14 +58,18 @@ export default function MyBidsPage() {
   const totalPages = pagination ? Math.ceil(pagination.total / (pagination.limit || limit)) : 1
 
   const handleWithdraw = async (id: string) => {
-    if (window.confirm("Are you sure you want to withdraw this proposal? You can still submit a new proposal later if the job is still open.")) {
-      try {
-        await withdrawBid(id).unwrap()
-        toast.success("Proposal withdrawn successfully.")
-      } catch (err: any) {
-        toast.error(err.data?.message || "Failed to withdraw proposal.")
-      }
+    setConfirmConfig({ isOpen: true, bidId: id })
+  }
+
+  const handleConfirmWithdraw = async () => {
+    const id = confirmConfig.bidId
+    try {
+      await withdrawBid(id).unwrap()
+      toast.success("Proposal withdrawn successfully.")
+    } catch (err: any) {
+      toast.error(err.data?.message || "Failed to withdraw proposal.")
     }
+    setConfirmConfig({ isOpen: false, bidId: "" })
   }
 
   const getStatusBadgeVariant = (s: string) => {
@@ -214,6 +227,16 @@ export default function MyBidsPage() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, bidId: "" })}
+        onConfirm={handleConfirmWithdraw}
+        title="Withdraw Proposal"
+        description="Are you sure you want to withdraw this proposal? You can still submit a new proposal later if the job is still open."
+        variant="destructive"
+        confirmText="Withdraw Proposal"
+      />
     </div>
   )
 }

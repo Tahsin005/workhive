@@ -12,6 +12,7 @@ import {
   Loader2
 } from "lucide-react"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 import { useGetMyJobsQuery, useDeleteJobMutation } from "@/store/api/jobsApi"
 import { Button } from "@/components/ui/button"
@@ -43,14 +44,27 @@ export default function MyJobsPage() {
   const { data, isLoading, isError, isFetching } = useGetMyJobsQuery({ page, limit })
   const [deleteJob] = useDeleteJobMutation()
 
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    jobId: string
+  }>({
+    isOpen: false,
+    jobId: "",
+  })
+
   const handleDelete = async (jobId: string) => {
-    if (!window.confirm("Are you sure you want to delete this job? This action cannot be undone unless there are active contracts.")) return
+    setConfirmConfig({ isOpen: true, jobId })
+  }
+
+  const handleConfirmDelete = async () => {
+    const jobId = confirmConfig.jobId
     try {
       await deleteJob(jobId).unwrap()
       toast.success("Job deleted successfully")
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to delete job")
     }
+    setConfirmConfig({ isOpen: false, jobId: "" })
   }
 
   const getStatusBadgeVariant = (s: string) => {
@@ -208,6 +222,16 @@ export default function MyJobsPage() {
           )}
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, jobId: "" })}
+        onConfirm={handleConfirmDelete}
+        title="Delete Job Posting"
+        description="Are you sure you want to delete this job? This action cannot be undone unless there are active contracts."
+        variant="destructive"
+        confirmText="Delete Job"
+      />
     </div>
   )
 }

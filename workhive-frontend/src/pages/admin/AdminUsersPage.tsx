@@ -4,6 +4,7 @@ import { Link } from "react-router"
 import { Search, Eye, Ban, Trash2, CheckCircle2 } from "lucide-react"
 import { format } from "date-fns"
 import { toast } from "sonner"
+import { ConfirmDialog } from "@/components/ConfirmDialog"
 
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
@@ -44,6 +45,14 @@ export default function AdminUsersPage() {
   const [banUser, { isLoading: isBanning }] = useBanUserMutation()
   const [deleteUser, { isLoading: isDeleting }] = useDeleteUserMutation()
 
+  const [confirmConfig, setConfirmConfig] = useState<{
+    isOpen: boolean
+    userId: string
+  }>({
+    isOpen: false,
+    userId: "",
+  })
+
   const handleBanToggle = async (id: string, currentlyActive: boolean) => {
     try {
       const action = currentlyActive ? "banned" : "unbanned"
@@ -55,14 +64,18 @@ export default function AdminUsersPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Are you sure you want to delete this user? This action may be restricted if they have active contracts.")) return
-    
+    setConfirmConfig({ isOpen: true, userId: id })
+  }
+
+  const handleConfirmDelete = async () => {
+    const id = confirmConfig.userId
     try {
       await deleteUser(id).unwrap()
       toast.success("User successfully deleted.")
     } catch (err: any) {
       toast.error(err.data?.message || "Failed to delete user.")
     }
+    setConfirmConfig({ isOpen: false, userId: "" })
   }
 
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -223,6 +236,16 @@ export default function AdminUsersPage() {
           </Button>
         </div>
       )}
+
+      <ConfirmDialog
+        isOpen={confirmConfig.isOpen}
+        onClose={() => setConfirmConfig({ isOpen: false, userId: "" })}
+        onConfirm={handleConfirmDelete}
+        title="Delete User"
+        description="Are you sure you want to delete this user? This action may be restricted if they have active contracts."
+        variant="destructive"
+        confirmText="Delete User"
+      />
     </div>
   )
 }

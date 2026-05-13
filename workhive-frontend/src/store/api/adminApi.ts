@@ -3,7 +3,9 @@ import { fetchBaseQuery } from '@reduxjs/toolkit/query/react'
 
 import type { AdminJob, AdminStats, AdminUser, AdminUserDetail, PaginatedResponse } from '@/types/admin'
 import type { RootState } from '..'
-import type { ApiResponse } from '@/types/auth'
+import type { ApiResponse, User } from '@/types/auth'
+import { jobsApi } from './jobsApi'
+import { authApi } from './authApi'
 
 const baseQuery = fetchBaseQuery({
   baseUrl: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api/v1',
@@ -34,7 +36,13 @@ export const adminApi = createApi({
         url: '/admin/users',
         params,
       }),
-      providesTags: ['AdminUsers'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.data.map(({ id }) => ({ type: 'AdminUsers' as const, id })),
+              { type: 'AdminUsers', id: 'LIST' }
+            ]
+          : [{ type: 'AdminUsers', id: 'LIST' }],
     }),
 
     getUser: builder.query<ApiResponse<AdminUserDetail>, string>({
@@ -47,7 +55,18 @@ export const adminApi = createApi({
         url: `/admin/users/${id}/ban`,
         method: 'PUT',
       }),
-      invalidatesTags: ['AdminUsers', 'AdminStats', 'AdminUserDetail'],
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'AdminUsers', id: 'LIST' }, 
+        'AdminStats', 
+        { type: 'AdminUserDetail', id }
+      ],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          // Refresh user profile in authApi if an admin bans them
+          dispatch(authApi.util.invalidateTags([{ type: 'User', id }]))
+        } catch {}
+      },
     }),
 
     deleteUser: builder.mutation<ApiResponse<null>, string>({
@@ -66,7 +85,13 @@ export const adminApi = createApi({
         url: '/admin/jobs',
         params,
       }),
-      providesTags: ['AdminJobs'],
+      providesTags: (result) => 
+        result 
+          ? [
+              ...result.data.map(({ id }) => ({ type: 'AdminJobs' as const, id })),
+              { type: 'AdminJobs', id: 'LIST' }
+            ]
+          : [{ type: 'AdminJobs', id: 'LIST' }],
     }),
 
     getJob: builder.query<ApiResponse<AdminJob>, string>({
@@ -79,7 +104,17 @@ export const adminApi = createApi({
         url: `/admin/jobs/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['AdminJobs', 'AdminStats'],
+      invalidatesTags: (_result, _error, id) => [
+        { type: 'AdminJobs', id: 'LIST' }, 
+        'AdminStats'
+      ],
+      async onQueryStarted(id, { dispatch, queryFulfilled }) {
+        try {
+          await queryFulfilled
+          // Invalidate main jobs list if an admin deletes a job
+          dispatch(jobsApi.util.invalidateTags([{ type: 'Jobs', id: 'LIST' }]))
+        } catch {}
+      },
     }),
   }),
 })
