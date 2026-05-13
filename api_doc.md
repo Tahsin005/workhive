@@ -226,7 +226,31 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 2. Job Endpoints
+## 2. Dashboard Endpoints
+
+### `GET /api/v1/dashboard/client`
+**Description:** Returns statistical summary for a client (posted jobs, active contracts, total spent).
+
+**Request:**
+- **Headers:** `Authorization: Bearer <token>` (Client only)
+
+**Responses:**
+- `200 OK`: Returns counts and financial summary.
+
+---
+
+### `GET /api/v1/dashboard/freelancer`
+**Description:** Returns statistical summary for a freelancer (submitted bids, active contracts, total earned).
+
+**Request:**
+- **Headers:** `Authorization: Bearer <token>` (Freelancer only)
+
+**Responses:**
+- `200 OK`: Returns counts and financial summary.
+
+---
+
+## 3. Job Endpoints
 
 ### `GET /api/v1/jobs`
 **Description:** Public job listing with search, filtering, and pagination.
@@ -339,7 +363,7 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 3. Bid Endpoints
+## 4. Bid Endpoints
 
 ### `POST /api/v1/jobs/:id/bids`
 **Description:** Freelancer submits a bid on a job.
@@ -456,7 +480,7 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 4. Contract Endpoints
+## 5. Contract Endpoints
 
 ### `GET /api/v1/contracts`
 **Description:** List own contracts for both clients and freelancers.
@@ -513,7 +537,7 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 5. Payment Endpoints
+## 6. Payment Endpoints
 
 ### `POST /api/v1/payments/intent`
 **Description:** Create a Stripe PaymentIntent to fund a contract.
@@ -550,8 +574,19 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-### `GET /api/v1/contracts/:id/payments`
-**Description:** View payment history for a specific contract.
+### `GET /api/v1/payments`
+**Description:** List all payments for the authenticated user.
+
+**Request:**
+- **Headers:** `Authorization: Bearer <token>`
+
+**Responses:**
+- `200 OK`: Returns a list of all transactions the user was involved in (as client or freelancer).
+
+---
+
+### `GET /api/v1/payments/contract/:id`
+**Description:** View payment details for a specific contract.
 
 **Request:**
 - **Headers:** `Authorization: Bearer <token>`
@@ -563,26 +598,26 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 6. Message Endpoints
+## 7. Message Endpoints
 
-### `GET /api/v1/contracts/:id/messages`
+### `GET /api/v1/messages/:contractId`
 **Description:** Load full chat history for a contract.
 
 **Request:**
 - **Headers:** `Authorization: Bearer <token>`
-- **Path Parameter:** `id` (Contract UUID)
+- **Path Parameter:** `contractId` (Contract UUID)
 
 **Responses:**
 - `200 OK`: List of messages sorted oldest-to-newest.
 
 ---
 
-### `POST /api/v1/contracts/:id/messages`
+### `POST /api/v1/messages/:contractId`
 **Description:** REST fallback for sending a message.
 
 **Request:**
 - **Headers:** `Authorization: Bearer <token>`
-- **Path Parameter:** `id` (Contract UUID)
+- **Path Parameter:** `contractId` (Contract UUID)
 - **Body:**
   ```json
   {
@@ -596,11 +631,12 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-### `PUT /api/v1/contracts/:id/messages/read`
+### `POST /api/v1/messages/:contractId/read`
 **Description:** Mark all unread messages from the other party as read.
 
 **Request:**
 - **Headers:** `Authorization: Bearer <token>`
+- **Path Parameter:** `contractId` (Contract UUID)
 
 **Responses:**
 - `200 OK`: Returns the count of messages updated.
@@ -619,9 +655,9 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 7. Review Endpoints
+## 8. Review Endpoints
 
-### `POST /api/v1/contracts/:id/reviews`
+### `POST /api/v1/reviews/contract/:id`
 **Description:** Submit a review after contract completion.
 
 **Request:**
@@ -642,7 +678,7 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-### `GET /api/v1/users/:id/reviews`
+### `GET /api/v1/reviews/user/:id`
 **Description:** Publicly view reviews on a user's profile.
 
 **Request:**
@@ -654,7 +690,7 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
 
 ---
 
-## 8. Admin Endpoints
+## 9. Admin Endpoints
 
 ### `GET /api/v1/admin/users`
 **Description:** List all users (including soft-deleted).
@@ -749,6 +785,18 @@ Set-Cookie: refresh_token=; HttpOnly; SameSite=Strict; Path=/api/v1/auth; Max-Ag
     "pending_revenue": 2000.00
   }
   ```
+
+---
+
+### `PUT /api/v1/admin/contracts/:id/resolve`
+**Description:** Admin resolve a disputed contract. Sets the status to `completed`.
+
+**Request:**
+- **Headers:** `Authorization: Bearer <token>` (Admin only)
+- **Path Parameter:** `id` (Contract UUID)
+
+**Responses:**
+- `200 OK`: Dispute resolved.
 
 ---
 
