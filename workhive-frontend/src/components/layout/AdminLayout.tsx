@@ -12,7 +12,7 @@ export default function AdminLayout() {
       <AdminSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="md:hidden flex items-center justify-between p-4 border-b bg-gray-900 border-gray-800">
+        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-gray-900 border-gray-800">
           <Link to="/" className="text-xl font-bold text-white">WorkHive Admin</Link>
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)} className="text-white hover:bg-gray-800 hover:text-white">
             <Menu className="h-5 w-5" />

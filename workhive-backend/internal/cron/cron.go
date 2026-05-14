@@ -24,6 +24,7 @@ func InitCron(cfg *config.Config) *cron.Cron {
 		defer resp.Body.Close()
 
 		if resp.StatusCode == http.StatusOK {
+			log.Println(url)
 			log.Printf("[Cron] Self-ping successful: %d OK", resp.StatusCode)
 		} else {
 			log.Printf("[Cron] Self-ping returned non-OK status: %d", resp.StatusCode)

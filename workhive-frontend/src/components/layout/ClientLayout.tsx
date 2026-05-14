@@ -12,7 +12,7 @@ export default function ClientLayout() {
       <ClientSidebar isOpen={isSidebarOpen} setIsOpen={setIsSidebarOpen} />
       
       <div className="flex flex-col flex-1 overflow-hidden">
-        <header className="md:hidden flex items-center justify-between p-4 border-b bg-background">
+        <header className="lg:hidden flex items-center justify-between p-4 border-b bg-background">
           <Link to="/" className="text-xl font-bold text-primary">WorkHive</Link>
           <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
             <Menu className="h-5 w-5" />

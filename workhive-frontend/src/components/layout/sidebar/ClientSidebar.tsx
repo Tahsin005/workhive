@@ -88,7 +88,7 @@ export default function ClientSidebar({
       {/* Mobile overlay */}
       {isOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -96,7 +96,7 @@ export default function ClientSidebar({
       {/* Sidebar container */}
       <div
         className={cn(
-          "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r flex flex-col transition-transform duration-300 ease-in-out md:translate-x-0 md:static md:h-screen md:shrink-0",
+          "fixed inset-y-0 left-0 z-50 w-64 bg-background border-r flex flex-col transition-transform duration-300 ease-in-out lg:translate-x-0 lg:static lg:h-screen lg:shrink-0",
           isOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
